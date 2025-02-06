@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 
-class CustomBottomNav extends StatelessWidget {
+class BottomNavigationWidget extends StatelessWidget {
   final int selectedIndex;
-  final Function(int) onItemTapped;
+  final Function(int) onTap;
 
-  const CustomBottomNav({
+  const BottomNavigationWidget({
     super.key,
     required this.selectedIndex,
-    required this.onItemTapped,
+    required this.onTap,
   });
 
   @override
@@ -28,7 +28,7 @@ class CustomBottomNav extends StatelessWidget {
         ),
       ],
       currentIndex: selectedIndex,
-      onTap: onItemTapped,
+      onTap: onTap,
     );
   }
 } 
