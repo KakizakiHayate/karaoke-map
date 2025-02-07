@@ -29,8 +29,7 @@ class _SearchHeaderWidgetState extends State<SearchHeaderWidget> {
           children: [
             Row(
               children: [
-                SizedBox(
-                  width: MediaQuery.of(context).size.width - 120,
+                Expanded(
                   child: TextField(
                     decoration: InputDecoration(
                       hintText: 'カラオケ店を検索',
@@ -71,13 +70,12 @@ class _SearchHeaderWidgetState extends State<SearchHeaderWidget> {
               ],
             ),
             const SizedBox(height: 8),
-            SizedBox(
-              height: 40,
-              child: Row(
-                children: [
-                  Expanded(
-                    child: ListView(
-                      scrollDirection: Axis.horizontal,
+            Row(
+              children: [
+                Expanded(
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
                       children: _selectedChains.keys.map((chain) {
                         return Padding(
                           padding: const EdgeInsets.only(right: 8),
@@ -94,14 +92,14 @@ class _SearchHeaderWidgetState extends State<SearchHeaderWidget> {
                       }).toList(),
                     ),
                   ),
-                  TextButton(
-                    onPressed: () {
-                      // TODO: 詳細画面への遷移処理を追加
-                    },
-                    child: const Text('すべて表示'),
-                  ),
-                ],
-              ),
+                ),
+                TextButton(
+                  onPressed: () {
+                    // TODO: 詳細画面への遷移処理を追加
+                  },
+                  child: const Text('すべて表示'),
+                ),
+              ],
             ),
           ],
         ),
