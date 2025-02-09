@@ -24,10 +24,10 @@ class SearchResultModalWidget extends StatelessWidget {
           ),
         ],
       ),
-      child: ListView(
-        controller: scrollController,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          // ドラッグハンドル
+          // グラバー
           Center(
             child: Container(
               margin: const EdgeInsets.symmetric(vertical: 8),
@@ -39,7 +39,15 @@ class SearchResultModalWidget extends StatelessWidget {
               ),
             ),
           ),
-          // ここに検索結果を表示
+          // 検索結果リスト
+          Expanded(
+            child: ListView(
+              controller: scrollController,
+              children: [
+                // ここに検索結果を表示
+              ],
+            ),
+          ),
         ],
       ),
     );
