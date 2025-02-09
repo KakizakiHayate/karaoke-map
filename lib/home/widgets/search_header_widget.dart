@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../screens/karaoke_chain_settings_screen.dart';
+import '../screens/search_detail_screen.dart';
 
 class SearchHeaderWidget extends StatefulWidget {
   const SearchHeaderWidget({super.key});
@@ -45,6 +46,15 @@ class _SearchHeaderWidgetState extends State<SearchHeaderWidget> {
               children: [
                 Expanded(
                   child: TextField(
+                    readOnly: true,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const SearchDetailScreen(),
+                        ),
+                      );
+                    },
                     decoration: InputDecoration(
                       hintText: 'カラオケ店を検索',
                       prefixIcon: const Icon(Icons.search),
