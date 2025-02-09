@@ -2,11 +2,46 @@ import 'package:flutter/material.dart';
 
 class SearchResultModalWidget extends StatelessWidget {
   final ScrollController scrollController;
+  static const List<double> snapSizes = [0.1, 0.6, 0.9];
 
   const SearchResultModalWidget({
     super.key,
     required this.scrollController,
   });
+
+  void _handleDragEnd(DragEndDetails details, BuildContext context) {
+    final currentSize = (scrollController.position.pixels /
+            MediaQuery.of(context).size.height) +
+        0.1;
+    final velocity = details.primaryVelocity ?? 0;
+
+    double targetSize;
+    if (velocity == 0) {
+      // ドラッグ終了時、最も近いスナップポイントへ
+      targetSize = snapSizes.reduce((a, b) {
+        return (currentSize - a).abs() < (currentSize - b).abs() ? a : b;
+      });
+    } else if (velocity < 0) {
+      // 上方向へのスワイプ
+      targetSize = snapSizes.firstWhere(
+        (size) => size > currentSize,
+        orElse: () => snapSizes.last,
+      );
+    } else {
+      // 下方向へのスワイプ
+      targetSize = snapSizes.lastWhere(
+        (size) => size < currentSize,
+        orElse: () => snapSizes.first,
+      );
+    }
+
+    DraggableScrollableActuator.reset(context);
+    scrollController.animateTo(
+      (targetSize - 0.1) * MediaQuery.of(context).size.height,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -28,14 +63,22 @@ class SearchResultModalWidget extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           // グラバー
-          Center(
-            child: Container(
-              margin: const EdgeInsets.symmetric(vertical: 8),
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(2),
+          GestureDetector(
+            onVerticalDragUpdate: (details) {
+              scrollController.jumpTo(
+                scrollController.offset - details.delta.dy,
+              );
+            },
+            onVerticalDragEnd: (details) => _handleDragEnd(details, context),
+            child: Center(
+              child: Container(
+                margin: const EdgeInsets.symmetric(vertical: 8),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
             ),
           ),
@@ -52,4 +95,4 @@ class SearchResultModalWidget extends StatelessWidget {
       ),
     );
   }
-} 
+}

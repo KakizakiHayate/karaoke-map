@@ -35,9 +35,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
           // モーダル
           DraggableScrollableSheet(
-            initialChildSize: 0.3,
+            initialChildSize: 0.6,
             minChildSize: 0.1,
             maxChildSize: 0.9,
+            snap: true,
+            snapSizes: const [0.1, 0.6, 0.9],
             builder: (context, scrollController) {
               return SearchResultModalWidget(
                 scrollController: scrollController,
