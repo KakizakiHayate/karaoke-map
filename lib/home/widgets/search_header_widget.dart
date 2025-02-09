@@ -13,14 +13,22 @@ class _SearchHeaderWidgetState extends State<SearchHeaderWidget> {
   final List<String> _radiusOptions = ['300', '500', '1000', '2000'];
 
   final Map<String, bool> _selectedChains = {
-    'カラオケマック': false,
-    'ジョイサウンド': false,
-    'ビッグエコー': false,
-    'カラオケバンバン': false,
+    'カラオケマック': true,
+    'ジョイサウンド': true,
+    'ビッグエコー': true,
+    'カラオケバンバン': true,
+    'JOYSOUND': true,
+    'カラオケ館': true,
+    'カラオケの鉄人': true,
   };
+
+  static const int _maxVisibleChains = 5;
 
   @override
   Widget build(BuildContext context) {
+    // 最初の5つのチェーン店のみを表示
+    final visibleChains = _selectedChains.entries.take(_maxVisibleChains);
+
     return Container(
       color: Colors.white,
       child: Padding(
@@ -82,15 +90,15 @@ class _SearchHeaderWidgetState extends State<SearchHeaderWidget> {
                   child: SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Row(
-                      children: _selectedChains.keys.map((chain) {
+                      children: visibleChains.map((entry) {
                         return Padding(
                           padding: const EdgeInsets.only(right: 8),
                           child: FilterChip(
-                            label: Text(chain),
-                            selected: _selectedChains[chain]!,
+                            label: Text(entry.key),
+                            selected: entry.value,
                             onSelected: (bool selected) {
                               setState(() {
-                                _selectedChains[chain] = selected;
+                                _selectedChains[entry.key] = selected;
                               });
                             },
                           ),
