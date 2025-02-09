@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../screens/karaoke_chain_settings_screen.dart';
 
 class SearchHeaderWidget extends StatefulWidget {
   const SearchHeaderWidget({super.key});
@@ -99,8 +100,22 @@ class _SearchHeaderWidgetState extends State<SearchHeaderWidget> {
                   ),
                 ),
                 TextButton(
-                  onPressed: () {
-                    // TODO: 詳細画面への遷移処理を追加
+                  onPressed: () async {
+                    final result = await Navigator.push<Map<String, bool>>(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => KaraokeChainSettingsScreen(
+                          initialSelectedChains: _selectedChains,
+                        ),
+                      ),
+                    );
+
+                    if (result != null) {
+                      setState(() {
+                        _selectedChains.clear();
+                        _selectedChains.addAll(result);
+                      });
+                    }
                   },
                   child: const Text('すべて表示'),
                 ),
