@@ -9,6 +9,7 @@ import 'screens/search_screen.dart';
 import 'screens/history_screen.dart';
 import 'screens/settings_screen.dart';
 import '../services/places_service.dart';
+import 'package:geolocator/geolocator.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -44,9 +45,13 @@ class _HomeScreenState extends State<HomeScreen> {
     const SettingsScreen(),
   ];
 
+  // 現在地の状態を追加
+  LatLng? _userLocation;
+
   @override
   void initState() {
     super.initState();
+    _getCurrentLocation();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _updateMaxModalSize();
     });
@@ -70,6 +75,49 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  Future<void> _getCurrentLocation() async {
+    // 位置情報の権限を確認・取得
+    final permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      await Geolocator.requestPermission();
+    }
+
+    try {
+      final position = await Geolocator.getCurrentPosition();
+      setState(() {
+        _userLocation = LatLng(position.latitude, position.longitude);
+      });
+    } catch (e) {
+      print('Error getting location: $e');
+    }
+  }
+
+  Future<void> _performSearch(String query) async {
+    setState(() => _searchResults = []); // 検索中は結果をクリア
+
+    // 検索タイプを判断（駅名かエリア名か）
+    final isStation = query.contains('駅');
+    LatLng? searchLocation;
+
+    if (isStation) {
+      // 駅の座標を取得
+      final stationLocation = await PlacesService().getPlaceLocation(query);
+      if (stationLocation != null) {
+        searchLocation = stationLocation;
+      }
+    }
+
+    // 検索実行
+    final results = await PlacesService().searchKaraoke(
+      query,
+      userLocation: _userLocation, // 現在地
+      searchLocation: searchLocation, // 駅/エリアの位置
+      isStation: isStation, // 駅検索かどうか
+    );
+
+    setState(() => _searchResults = results);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -88,12 +136,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: SearchHeaderWidget(
                   key: _headerKey,
                   searchController: _searchController,
-                  onSearch: (query) async {
-                    final results = await PlacesService().searchKaraoke(query);
-                    setState(() {
-                      _searchResults = results;
-                    });
-                  },
+                  onSearch: _performSearch, // 更新した検索メソッドを使用
                 ),
               ),
 

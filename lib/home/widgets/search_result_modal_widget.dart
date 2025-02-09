@@ -49,64 +49,124 @@ class _SearchResultModalWidgetState extends State<SearchResultModalWidget> {
                     itemCount: widget.searchResults.length,
                     itemBuilder: (context, index) {
                       final result = widget.searchResults[index];
-                      return Card(
-                        margin: const EdgeInsets.all(8),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            if (result.photoReference != null)
-                              Image.network(
-                                PlacesService()
-                                    .getPhotoUrl(result.photoReference!),
-                                height: 200,
-                                width: double.infinity,
-                                fit: BoxFit.cover,
-                              ),
-                            Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    result.name,
-                                    style:
-                                        Theme.of(context).textTheme.titleLarge,
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(result.address),
-                                  if (result.rating > 0) ...[
-                                    const SizedBox(height: 8),
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          Icons.star,
-                                          size: 16,
-                                          color: Colors.amber[700],
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          '${result.rating} (${result.userRatingsTotal})',
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            ),
-                            ButtonBar(
-                              children: [
-                                TextButton.icon(
-                                  icon: const Icon(Icons.directions),
-                                  label: const Text('ルート案内'),
-                                  onPressed: () => _openInMaps(result),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      );
+                      return _buildResultCard(context, result);
                     },
                   ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildResultCard(BuildContext context, PlaceResult result) {
+    return Card(
+      margin: const EdgeInsets.all(8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 店名と距離
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  result.name,
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                if (result.getDistanceText().isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      result.getDistanceText(),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Colors.grey[600],
+                          ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+
+          // 店舗画像
+          if (result.photoReference != null)
+            Image.network(
+              PlacesService().getPhotoUrl(result.photoReference!),
+              height: 200,
+              width: double.infinity,
+              fit: BoxFit.cover,
+            )
+          else
+            Image.asset(
+              'assets/images/no_image.png', // デフォルト画像を追加する必要があります
+              height: 200,
+              width: double.infinity,
+              fit: BoxFit.cover,
+            ),
+
+          // 営業時間
+          if (result.openingHours != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+              child: Row(
+                children: [
+                  Icon(
+                    result.isOpenNow == true
+                        ? Icons.check_circle
+                        : Icons.access_time,
+                    size: 16,
+                    color: result.isOpenNow == true ? Colors.green : Colors.red,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    result.isOpenNow == true ? '営業中' : '営業時間外',
+                    style: TextStyle(
+                      color:
+                          result.isOpenNow == true ? Colors.green : Colors.red,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    result.getOpeningHoursText(),
+                    style: TextStyle(
+                      color:
+                          result.isOpenNow == true ? Colors.grey : Colors.red,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+          // アクションボタン
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Row(
+              children: [
+                TextButton.icon(
+                  icon: const Icon(Icons.directions),
+                  label: const Text('ここにいく'),
+                  onPressed: () => _openInMaps(result),
+                ),
+                if (result.website != null)
+                  TextButton.icon(
+                    icon: const Icon(Icons.language),
+                    label: const Text('ウェブサイト'),
+                    onPressed: () => _launchUrl(result.website!),
+                  ),
+                TextButton.icon(
+                  icon: const Icon(Icons.share),
+                  label: const Text('共有'),
+                  onPressed: () => _sharePlace(result),
+                ),
+                if (result.phoneNumber != null)
+                  TextButton.icon(
+                    icon: const Icon(Icons.phone),
+                    label: const Text('電話'),
+                    onPressed: () => _callPhone(result.phoneNumber!),
+                  ),
+              ],
+            ),
           ),
         ],
       ),
@@ -119,6 +179,25 @@ class _SearchResultModalWidgetState extends State<SearchResultModalWidget> {
     );
     if (await canLaunchUrl(url)) {
       await launchUrl(url);
+    }
+  }
+
+  Future<void> _launchUrl(String url) async {
+    if (await canLaunchUrl(Uri.parse(url))) {
+      await launchUrl(Uri.parse(url));
+    }
+  }
+
+  Future<void> _sharePlace(PlaceResult place) async {
+    final url =
+        'https://www.google.com/maps/search/?api=1&query=${place.lat},${place.lng}';
+    // Share.shareの実装が必要です
+  }
+
+  Future<void> _callPhone(String phoneNumber) async {
+    final url = 'tel:$phoneNumber';
+    if (await canLaunchUrl(Uri.parse(url))) {
+      await launchUrl(Uri.parse(url));
     }
   }
 }
