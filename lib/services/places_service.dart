@@ -66,6 +66,16 @@ class PlacesService {
       if (detailsResponse.statusCode == 200) {
         final detailsJson = jsonDecode(detailsResponse.body);
         if (detailsJson['status'] == 'OK') {
+          print('Place Details Response for ${place['name']}:');
+          print('Opening hours: ${detailsJson['result']['opening_hours']}');
+          print(
+              'Periods: ${detailsJson['result']['opening_hours']?['periods']}');
+          print(
+              'Open now: ${detailsJson['result']['opening_hours']?['open_now']}');
+          print(
+              'Weekday text: ${detailsJson['result']['opening_hours']?['weekday_text']}');
+          print('Phone: ${detailsJson['result']['formatted_phone_number']}');
+          print('Website: ${detailsJson['result']['website']}');
           place.addAll(detailsJson['result']);
         }
       }

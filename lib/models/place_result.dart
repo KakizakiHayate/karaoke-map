@@ -11,10 +11,10 @@ class PlaceResult {
   final String? website;
   final Map<String, String>? openingHours;
   final bool? isOpenNow;
-  final double? distance;  // メートル単位での距離
-  final Map<String, dynamic>? nearestStation;  // 追加
-  final String? distanceType;  // 'current', 'station', 'nearest'
-  final String? stationName;   // 駅名（駅検索の場合）
+  final double? distance; // メートル単位での距離
+  final Map<String, dynamic>? nearestStation; // 追加
+  final String? distanceType; // 'current', 'station', 'nearest'
+  final String? stationName; // 駅名（駅検索の場合）
 
   PlaceResult({
     required this.placeId,
@@ -38,13 +38,25 @@ class PlaceResult {
   factory PlaceResult.fromJson(Map<String, dynamic> json) {
     final openingHours = json['opening_hours'];
     Map<String, String>? hours;
-    
+
     if (openingHours != null && openingHours['periods'] != null) {
       try {
-        hours = {
-          'open': openingHours['periods'][0]?['open']?['time'] ?? '',
-          'close': openingHours['periods'][0]?['close']?['time'] ?? '',
-        };
+        final periods = openingHours['periods'] as List;
+
+        // 24時間営業の判定
+        if (periods.length == 1 &&
+            periods[0]['open']?['time'] == '0000' &&
+            periods[0]['close'] == null) {
+          hours = {
+            'open': '0000',
+            'close': '0000',
+          };
+        } else {
+          hours = {
+            'open': periods[0]?['open']?['time'] ?? '',
+            'close': periods[0]?['close']?['time'] ?? '',
+          };
+        }
       } catch (e) {
         print('Error parsing opening hours: $e');
         hours = null;
@@ -71,42 +83,54 @@ class PlaceResult {
     );
   }
 
+  String _formatDistance(double meters) {
+    if (meters >= 1000) {
+      return '${(meters / 1000).toStringAsFixed(1)}km';
+    }
+    return '${meters.round()}m';
+  }
+
   String getDistanceText() {
     if (distance == null) {
       print('Distance is null');
       return '';
     }
-    
+
     print('Distance type: $distanceType');
     print('Station name: $stationName');
     print('Nearest station: $nearestStation');
-    
+
     switch (distanceType) {
       case 'current':
-        return '現在地から${distance!.round()}m';
+        return '現在地から${_formatDistance(distance!)}';
       case 'station':
-        return '$stationNameから${distance!.round()}m';
+        return '$stationNameから${_formatDistance(distance!)}';
       case 'nearest':
         if (nearestStation != null) {
-          return '${nearestStation!['name']}から${nearestStation!['distance'].round()}m';
+          return '${nearestStation!['name']}から${_formatDistance(nearestStation!['distance'])}';
         }
         break;
     }
-    return '${distance!.round()}m';
+    return _formatDistance(distance!);
   }
 
   String getOpeningHoursText() {
     if (openingHours == null) return '';
-    
+
     final open = openingHours!['open'];
     final close = openingHours!['close'];
-    
+
     if (open == null || close == null) return '';
-    
-    // 24時間表記を12時間表記に変換
+
+    // 24時間営業の判定
+    if (open == '0000' && close == '0000') {
+      return '24時間営業';
+    }
+
+    // 通常の営業時間表示
     final openTime = _formatTime(open);
     final closeTime = _formatTime(close);
-    
+
     return '$openTime ~ $closeTime';
   }
 
@@ -116,4 +140,4 @@ class PlaceResult {
     final minute = time.substring(2);
     return '$hour:$minute';
   }
-} 
+}
