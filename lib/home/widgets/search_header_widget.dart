@@ -10,7 +10,7 @@ class SearchHeaderWidget extends StatefulWidget {
 class _SearchHeaderWidgetState extends State<SearchHeaderWidget> {
   String _selectedRadius = '500';
   final List<String> _radiusOptions = ['300', '500', '1000', '2000'];
-  
+
   final Map<String, bool> _selectedChains = {
     'カラオケマック': false,
     'ジョイサウンド': false,
@@ -23,7 +23,12 @@ class _SearchHeaderWidgetState extends State<SearchHeaderWidget> {
     return Container(
       color: Colors.white,
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.only(
+          top: MediaQuery.of(context).padding.top,
+          left: 16,
+          right: 16,
+          bottom: 16,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [

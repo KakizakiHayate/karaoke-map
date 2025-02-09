@@ -29,6 +29,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
           // 検索ヘッダー
           const SafeArea(
+            top: false,
             child: SearchHeaderWidget(),
           ),
 
