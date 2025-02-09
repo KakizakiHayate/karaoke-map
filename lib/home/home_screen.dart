@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import '../../models/place_result.dart';
 import 'widgets/search_header_widget.dart';
 import 'widgets/map_widget.dart';
 import 'widgets/search_result_modal_widget.dart';
@@ -7,6 +8,7 @@ import 'widgets/bottom_navigation_widget.dart';
 import 'screens/search_screen.dart';
 import 'screens/history_screen.dart';
 import 'screens/settings_screen.dart';
+import '../services/places_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -32,6 +34,9 @@ class _HomeScreenState extends State<HomeScreen> {
     target: _kTokyoStationLocation, // 東京駅付近
     zoom: _kMapZoomLevel,
   );
+
+  final TextEditingController _searchController = TextEditingController();
+  List<PlaceResult> _searchResults = [];
 
   // 表示する画面のリスト
   final List<Widget> _screens = [
@@ -81,7 +86,16 @@ class _HomeScreenState extends State<HomeScreen> {
               // 検索ヘッダー
               SafeArea(
                 top: false,
-                child: SearchHeaderWidget(key: _headerKey),
+                child: SearchHeaderWidget(
+                  key: _headerKey,
+                  searchController: _searchController,
+                  onSearch: (query) async {
+                    final results = await PlacesService().searchKaraoke(query);
+                    setState(() {
+                      _searchResults = results;
+                    });
+                  },
+                ),
               ),
 
               // モーダル
@@ -94,6 +108,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 builder: (context, scrollController) {
                   return SearchResultModalWidget(
                     scrollController: scrollController,
+                    searchResults: _searchResults,
                   );
                 },
               ),
@@ -112,5 +127,11 @@ class _HomeScreenState extends State<HomeScreen> {
         onTap: _onItemTapped,
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 }

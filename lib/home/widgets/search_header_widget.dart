@@ -3,27 +3,52 @@ import '../screens/karaoke_chain_settings_screen.dart';
 import '../screens/search_detail_screen.dart';
 
 class SearchHeaderWidget extends StatefulWidget {
-  const SearchHeaderWidget({super.key});
+  final TextEditingController? searchController;
+  final Function(String)? onSearch;
+
+  const SearchHeaderWidget({
+    super.key,
+    this.searchController,
+    this.onSearch,
+  });
 
   @override
   State<SearchHeaderWidget> createState() => _SearchHeaderWidgetState();
 }
 
 class _SearchHeaderWidgetState extends State<SearchHeaderWidget> {
+  late final TextEditingController _searchController;
   String _selectedRadius = '500';
   final List<String> _radiusOptions = ['300', '500', '1000', '2000'];
 
   final Map<String, bool> _selectedChains = {
-    'カラオケマック': true,
-    'ジョイサウンド': true,
+    'カラオケまねきねこ': true,
     'ビッグエコー': true,
-    'カラオケバンバン': true,
-    'JOYSOUND': true,
+    'カラオケBanBan': true,
     'カラオケ館': true,
-    'カラオケの鉄人': true,
+    'ジャンカラ': true,
+    'JOYSOUND直営店': true,
+    'カラオケJOYJOY': true,
+    'コート・ダジュール': true,
+    'カラオケCLUB DAM': true,
+    'カラオケルーム歌広場': true,
   };
 
   static const int _maxVisibleChains = 5;
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController = widget.searchController ?? TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    if (widget.searchController == null) {
+      _searchController.dispose();
+    }
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -46,9 +71,10 @@ class _SearchHeaderWidgetState extends State<SearchHeaderWidget> {
               children: [
                 Expanded(
                   child: TextField(
+                    controller: _searchController,
                     readOnly: true,
-                    onTap: () {
-                      Navigator.push(
+                    onTap: () async {
+                      final result = await Navigator.push(
                         context,
                         PageRouteBuilder(
                           pageBuilder:
@@ -64,6 +90,11 @@ class _SearchHeaderWidgetState extends State<SearchHeaderWidget> {
                           transitionDuration: const Duration(milliseconds: 200),
                         ),
                       );
+
+                      if (result != null && result is String) {
+                        // 検索結果を親ウィジェットに通知
+                        widget.onSearch?.call(result);
+                      }
                     },
                     decoration: InputDecoration(
                       hintText: 'カラオケ店を検索',
