@@ -64,7 +64,7 @@ class _SearchResultModalWidgetState extends State<SearchResultModalWidget> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 店名と距離
+          // 店名とレビュー情報
           Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -74,6 +74,45 @@ class _SearchResultModalWidgetState extends State<SearchResultModalWidget> {
                   result.name,
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
+                const SizedBox(height: 4),
+                // レビュー情報
+                Row(
+                  children: [
+                    // 星の表示
+                    Row(
+                      children: List.generate(5, (index) {
+                        return Icon(
+                          index < result.rating.floor()
+                              ? Icons.star
+                              : index < result.rating
+                                  ? Icons.star_half
+                                  : Icons.star_border,
+                          size: 16,
+                          color: Colors.amber,
+                        );
+                      }),
+                    ),
+                    const SizedBox(width: 4),
+                    // 評価点数
+                    Text(
+                      result.rating.toString(),
+                      style: const TextStyle(
+                        color: Colors.grey,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    // レビュー数
+                    Text(
+                      '(${result.userRatingsTotal})',
+                      style: const TextStyle(
+                        color: Colors.grey,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+                // 距離表示
                 if (result.getDistanceText().isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(top: 4),
@@ -104,38 +143,63 @@ class _SearchResultModalWidgetState extends State<SearchResultModalWidget> {
               fit: BoxFit.cover,
             ),
 
-          // 営業時間
-          if (result.openingHours != null)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-              child: Row(
-                children: [
-                  Icon(
-                    result.isOpenNow == true
-                        ? Icons.check_circle
-                        : Icons.access_time,
-                    size: 16,
-                    color: result.isOpenNow == true ? Colors.green : Colors.red,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    result.isOpenNow == true ? '営業中' : '営業時間外',
-                    style: TextStyle(
+          // 営業時間と住所
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 営業時間
+                Row(
+                  children: [
+                    Icon(
+                      result.isOpenNow == true
+                          ? Icons.check_circle
+                          : Icons.access_time,
+                      size: 16,
                       color:
                           result.isOpenNow == true ? Colors.green : Colors.red,
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    result.getOpeningHoursText(),
-                    style: TextStyle(
-                      color:
-                          result.isOpenNow == true ? Colors.grey : Colors.red,
+                    const SizedBox(width: 8),
+                    Text(
+                      result.isOpenNow == true ? '営業中' : '営業時間外',
+                      style: TextStyle(
+                        color: result.isOpenNow == true
+                            ? Colors.green
+                            : Colors.red,
+                      ),
                     ),
-                  ),
-                ],
-              ),
+                    const SizedBox(width: 8),
+                    Text(
+                      result.getOpeningHoursText(),
+                      style: TextStyle(
+                        color:
+                            result.isOpenNow == true ? Colors.grey : Colors.red,
+                      ),
+                    ),
+                  ],
+                ),
+                // 住所
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.location_on,
+                      size: 16,
+                      color: Colors.grey,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        result.address,
+                        style: const TextStyle(color: Colors.grey),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
+          ),
 
           // アクションボタン
           SingleChildScrollView(
