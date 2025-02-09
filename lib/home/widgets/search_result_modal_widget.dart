@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 
 class SearchResultModalWidget extends StatelessWidget {
   final ScrollController scrollController;
-  static const List<double> snapSizes = [0.1, 0.6, 0.9];
+  final List<double> snapSizes;
 
   const SearchResultModalWidget({
     super.key,
     required this.scrollController,
+    this.snapSizes = const [0.1, 0.6, 0.9],
   });
 
   void _handleDragEnd(DragEndDetails details, BuildContext context) {
