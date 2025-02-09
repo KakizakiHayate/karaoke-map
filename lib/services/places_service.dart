@@ -4,7 +4,7 @@ import '../models/place_suggestion.dart';
 import '../models/place_result.dart';
 
 class PlacesService {
-  static const String _apiKey = '';
+  static const String _apiKey = 'AIzaSyAECg6Ww6B3v3YtibYZkUXE_5tditY5eqI';
   static const String _baseUrl = 'https://maps.googleapis.com/maps/api/place';
 
   Future<List<PlaceSuggestion>> getAutocompleteSuggestions(

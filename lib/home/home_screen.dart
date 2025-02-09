@@ -20,7 +20,6 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   // マジックナンバーを定数として定義
   static const double _kDefaultMaxModalSize = 0.9;
-  static const double _kInitialModalSize = 0.1;
   static const double _kMinModalSize = 0.1;
   static const double _kMiddleModalSize = 0.45;
   static const double _kMapZoomLevel = 14.0;
@@ -100,7 +99,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
               // モーダル
               DraggableScrollableSheet(
-                initialChildSize: _kInitialModalSize,
+                initialChildSize: _kMiddleModalSize,
                 minChildSize: _kMinModalSize,
                 maxChildSize: _maxModalSize,
                 snap: true,

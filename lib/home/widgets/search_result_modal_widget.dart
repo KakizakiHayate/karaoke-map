@@ -26,66 +26,89 @@ class _SearchResultModalWidgetState extends State<SearchResultModalWidget> {
         color: Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
-      child: ListView.builder(
-        controller: widget.scrollController,
-        itemCount: widget.searchResults.length,
-        itemBuilder: (context, index) {
-          final result = widget.searchResults[index];
-          return Card(
-            margin: const EdgeInsets.all(8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (result.photoReference != null)
-                  Image.network(
-                    PlacesService().getPhotoUrl(result.photoReference!),
-                    height: 200,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                  ),
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        result.name,
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(result.address),
-                      if (result.rating > 0) ...[
-                        const SizedBox(height: 8),
-                        Row(
+      child: Column(
+        children: [
+          // グラバー
+          Container(
+            width: 40,
+            height: 4,
+            margin: const EdgeInsets.symmetric(vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.grey[300],
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          // 検索中のインジケータまたは検索結果
+          Expanded(
+            child: widget.searchResults.isEmpty
+                ? const Center(
+                    child: CircularProgressIndicator(),
+                  )
+                : ListView.builder(
+                    controller: widget.scrollController,
+                    itemCount: widget.searchResults.length,
+                    itemBuilder: (context, index) {
+                      final result = widget.searchResults[index];
+                      return Card(
+                        margin: const EdgeInsets.all(8),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Icon(
-                              Icons.star,
-                              size: 16,
-                              color: Colors.amber[700],
+                            if (result.photoReference != null)
+                              Image.network(
+                                PlacesService()
+                                    .getPhotoUrl(result.photoReference!),
+                                height: 200,
+                                width: double.infinity,
+                                fit: BoxFit.cover,
+                              ),
+                            Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    result.name,
+                                    style:
+                                        Theme.of(context).textTheme.titleLarge,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(result.address),
+                                  if (result.rating > 0) ...[
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.star,
+                                          size: 16,
+                                          color: Colors.amber[700],
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          '${result.rating} (${result.userRatingsTotal})',
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ],
+                              ),
                             ),
-                            const SizedBox(width: 4),
-                            Text(
-                              '${result.rating} (${result.userRatingsTotal})',
+                            ButtonBar(
+                              children: [
+                                TextButton.icon(
+                                  icon: const Icon(Icons.directions),
+                                  label: const Text('ルート案内'),
+                                  onPressed: () => _openInMaps(result),
+                                ),
+                              ],
                             ),
                           ],
                         ),
-                      ],
-                    ],
+                      );
+                    },
                   ),
-                ),
-                ButtonBar(
-                  children: [
-                    TextButton.icon(
-                      icon: const Icon(Icons.directions),
-                      label: const Text('ルート案内'),
-                      onPressed: () => _openInMaps(result),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          );
-        },
+          ),
+        ],
       ),
     );
   }

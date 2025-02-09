@@ -92,7 +92,9 @@ class _SearchHeaderWidgetState extends State<SearchHeaderWidget> {
                       );
 
                       if (result != null && result is String) {
-                        // 検索結果を親ウィジェットに通知
+                        setState(() {
+                          _searchController.text = result; // テキストフィールドを更新
+                        });
                         widget.onSearch?.call(result);
                       }
                     },
