@@ -13,12 +13,21 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  // マジックナンバーを定数として定義
+  static const double _kDefaultMaxModalSize = 0.9;
+  static const double _kInitialModalSize = 0.1;
+  static const double _kMinModalSize = 0.1;
+  static const double _kMiddleModalSize = 0.45;
+  static const double _kMapZoomLevel = 14.0;
+  static const LatLng _kTokyoStationLocation = LatLng(35.6812, 139.7671);
+
   final GlobalKey _headerKey = GlobalKey();
-  double _maxModalSize = 0.9; // デフォルト値
+  double _maxModalSize = _kDefaultMaxModalSize; // デフォルト値を定数から設定
   int _selectedIndex = 0;
+
   static const CameraPosition _kInitialPosition = CameraPosition(
-    target: LatLng(35.6812, 139.7671), // 東京駅付近
-    zoom: 14.0,
+    target: _kTokyoStationLocation, // 東京駅付近
+    zoom: _kMapZoomLevel,
   );
 
   @override
@@ -57,11 +66,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
           // モーダル
           DraggableScrollableSheet(
-            initialChildSize: 0.1,
-            minChildSize: 0.1,
+            initialChildSize: _kInitialModalSize,
+            minChildSize: _kMinModalSize,
             maxChildSize: _maxModalSize,
             snap: true,
-            snapSizes: [0.1, 0.45, _maxModalSize],
+            snapSizes: [_kMinModalSize, _kMiddleModalSize, _maxModalSize],
             builder: (context, scrollController) {
               return SearchResultModalWidget(
                 scrollController: scrollController,
