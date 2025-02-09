@@ -2,7 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class MapWidget extends StatelessWidget {
-  const MapWidget({super.key});
+  final Set<Marker> markers;
+  final void Function(GoogleMapController)? onMapCreated;
+
+  const MapWidget({
+    super.key,
+    this.markers = const {},
+    this.onMapCreated,
+  });
 
   static const CameraPosition _kInitialPosition = CameraPosition(
     target: LatLng(35.6812, 139.7671), // 東京駅付近
@@ -11,10 +18,12 @@ class MapWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const GoogleMap(
+    return GoogleMap(
       initialCameraPosition: _kInitialPosition,
-      myLocationButtonEnabled: true,
+      markers: markers,
+      onMapCreated: onMapCreated,
       myLocationEnabled: true,
+      myLocationButtonEnabled: true,
     );
   }
 }
