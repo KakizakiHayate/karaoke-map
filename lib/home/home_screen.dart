@@ -4,6 +4,9 @@ import 'widgets/search_header_widget.dart';
 import 'widgets/map_widget.dart';
 import 'widgets/search_result_modal_widget.dart';
 import 'widgets/bottom_navigation_widget.dart';
+import 'screens/search_screen.dart';
+import 'screens/history_screen.dart';
+import 'screens/settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -30,6 +33,13 @@ class _HomeScreenState extends State<HomeScreen> {
     zoom: _kMapZoomLevel,
   );
 
+  // 表示する画面のリスト
+  final List<Widget> _screens = [
+    const SearchScreen(),
+    const HistoryScreen(),
+    const SettingsScreen(),
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -50,42 +60,56 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
+      body: IndexedStack(
+        index: _selectedIndex,
         children: [
-          // Google Maps
-          const MapWidget(),
+          // 検索画面
+          Stack(
+            children: [
+              // Google Maps
+              const MapWidget(),
 
-          // 検索ヘッダー
-          SafeArea(
-            top: false,
-            child: SearchHeaderWidget(key: _headerKey),
+              // 検索ヘッダー
+              SafeArea(
+                top: false,
+                child: SearchHeaderWidget(key: _headerKey),
+              ),
+
+              // モーダル
+              DraggableScrollableSheet(
+                initialChildSize: _kInitialModalSize,
+                minChildSize: _kMinModalSize,
+                maxChildSize: _maxModalSize,
+                snap: true,
+                snapSizes: [_kMinModalSize, _kMiddleModalSize, _maxModalSize],
+                builder: (context, scrollController) {
+                  return SearchResultModalWidget(
+                    scrollController: scrollController,
+                  );
+                },
+              ),
+            ],
           ),
 
-          // モーダル
-          DraggableScrollableSheet(
-            initialChildSize: _kInitialModalSize,
-            minChildSize: _kMinModalSize,
-            maxChildSize: _maxModalSize,
-            snap: true,
-            snapSizes: [_kMinModalSize, _kMiddleModalSize, _maxModalSize],
-            builder: (context, scrollController) {
-              return SearchResultModalWidget(
-                scrollController: scrollController,
-              );
-            },
-          ),
+          // 履歴画面
+          const HistoryScreen(),
+
+          // 設定画面
+          const SettingsScreen(),
         ],
       ),
       bottomNavigationBar: BottomNavigationWidget(
         selectedIndex: _selectedIndex,
-        onTap: (index) {
-          setState(() {
-            _selectedIndex = index;
-          });
-        },
+        onTap: _onItemTapped,
       ),
     );
   }
