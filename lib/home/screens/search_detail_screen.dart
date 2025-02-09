@@ -29,6 +29,8 @@ class _SearchDetailScreenState extends State<SearchDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bool showCurrentLocation = _searchController.text.isEmpty;
+
     return Scaffold(
       appBar: AppBar(
         title: TextField(
@@ -51,43 +53,56 @@ class _SearchDetailScreenState extends State<SearchDetailScreen> {
         ),
       ),
       body: ListView.builder(
-        itemCount: 22, // サンプルデータ + 現在地ボタン + Divider
+        itemCount: showCurrentLocation
+            ? 22 // 現在地 + Divider + 検索結果
+            : 20, // 検索結果のみ
         itemBuilder: (context, index) {
-          if (index == 0) {
+          if (showCurrentLocation) {
+            if (index == 0) {
+              return ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.blue[50],
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.my_location,
+                    color: Colors.blue,
+                  ),
+                ),
+                title: const Text('現在地から検索'),
+                onTap: () {
+                  // TODO: 現在地を使用した検索処理
+                  Navigator.pop(context);
+                },
+              );
+            }
+
+            if (index == 1) {
+              return const Divider(height: 1);
+            }
+
+            // 現在地表示時の検索結果（インデックスを2つずらす）
             return ListTile(
-              leading: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.blue[50],
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.my_location,
-                  color: Colors.blue,
-                ),
-              ),
-              title: const Text('現在地から検索'),
+              title: Text('検索結果 ${index - 1}'),
+              subtitle: const Text('住所がここに表示されます'),
+              leading: const Icon(Icons.location_on),
               onTap: () {
-                // TODO: 現在地を使用した検索処理
+                Navigator.pop(context);
+              },
+            );
+          } else {
+            // 検索時の結果（そのままのインデックス）
+            return ListTile(
+              title: Text('検索結果 ${index + 1}'),
+              subtitle: const Text('住所がここに表示されます'),
+              leading: const Icon(Icons.location_on),
+              onTap: () {
                 Navigator.pop(context);
               },
             );
           }
-
-          if (index == 1) {
-            return const Divider(height: 1);
-          }
-
-          // 通常の検索結果（インデックスを2つずらす）
-          return ListTile(
-            title: Text('検索結果 ${index - 1}'),
-            subtitle: const Text('住所がここに表示されます'),
-            leading: const Icon(Icons.location_on),
-            onTap: () {
-              // TODO: 検索結果の選択処理
-              Navigator.pop(context);
-            },
-          );
         },
       ),
     );
