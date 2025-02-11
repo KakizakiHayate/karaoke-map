@@ -229,15 +229,53 @@ class _HomeScreenState extends State<HomeScreen> {
                 onMapCreated: (controller) => _mapController = controller,
               ),
 
-              // 検索ヘッダー
-              SafeArea(
-                top: false,
-                child: SearchHeaderWidget(
+              Column(
+                children: [
+                  SearchHeaderWidget(
                   key: _headerKey,
                   searchController: _searchController,
                   onSearch: _performSearch, // 更新した検索メソッドを使用
                 ),
+                              Container(
+                margin: const EdgeInsets.all(16.0),
+                padding: const EdgeInsets.all(12.0),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8.0),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      spreadRadius: 1,
+                      blurRadius: 3,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Text(
+                      'カラオケ店舗名',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      '住所が入ります',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ],
+                ),
               ),
+                ],
+              ),
+
 
               // モーダル
               DraggableScrollableSheet(
