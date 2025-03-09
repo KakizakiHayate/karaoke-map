@@ -59,6 +59,9 @@ class _HomeScreenState extends State<HomeScreen> {
   // マーカータップ時の店舗情報表示用のState
   PlaceResult? _selectedPlace;
 
+  // 選択された店舗のインデックスを追加
+  int _selectedPlaceIndex = 0;
+
   final DraggableScrollableController _draggableScrollableController =
       DraggableScrollableController();
 
@@ -218,17 +221,33 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // マーカータップ時のハンドラ
+  // マーカータップ時のハンドラを更新
   void _onMarkerTapped(PlaceResult place) {
+    final index = _searchResults.indexOf(place);
     setState(() {
+      _selectedPlaceIndex = index;
       _selectedPlace = place;
     });
 
-    // モーダルを最小サイズに設定
     _draggableScrollableController.animateTo(
       _kMinModalSize,
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOut,
+    );
+  }
+
+  // ページ変更時のハンドラを追加
+  void _onPageChanged(int index) {
+    setState(() {
+      _selectedPlaceIndex = index;
+      _selectedPlace = _searchResults[index];
+    });
+
+    // 地図の表示位置を更新
+    _mapController?.animateCamera(
+      CameraUpdate.newLatLng(
+        LatLng(_searchResults[index].lat, _searchResults[index].lng),
+      ),
     );
   }
 
@@ -248,11 +267,14 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           if (_selectedPlace != null)
             Positioned(
-              left: 16,
-              right: 16,
-              bottom: MediaQuery.of(context).size.height * _kMinModalSize +
-                  16, // モーダルの上に配置
-              child: PlaceInfoWindow(place: _selectedPlace!),
+              left: 0,
+              right: 0,
+              bottom: MediaQuery.of(context).size.height * _kMinModalSize + 16,
+              child: PlaceInfoWindow(
+                places: _searchResults,
+                selectedIndex: _selectedPlaceIndex,
+                onPageChanged: _onPageChanged,
+              ),
             ),
           DraggableScrollableSheet(
             controller: _draggableScrollableController,
