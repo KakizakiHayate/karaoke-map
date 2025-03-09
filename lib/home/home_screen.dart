@@ -284,9 +284,12 @@ class _HomeScreenState extends State<HomeScreen> {
             snap: true,
             snapSizes: [_kMinModalSize, _kMiddleModalSize, _maxModalSize],
             builder: (context, scrollController) {
-              return SearchResultModalWidget(
-                scrollController: scrollController,
-                searchResults: _searchResults,
+              return Material(
+                elevation: 8,
+                child: SearchResultModalWidget(
+                  scrollController: scrollController,
+                  searchResults: _searchResults,
+                ),
               );
             },
           ),
