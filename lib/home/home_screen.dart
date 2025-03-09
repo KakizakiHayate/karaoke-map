@@ -13,6 +13,7 @@ import 'package:geolocator/geolocator.dart';
 import 'dart:ui' as ui;
 import 'dart:typed_data'; // Uint8List用
 import 'package:flutter/rendering.dart';
+import 'widgets/place_info_window.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -54,6 +55,12 @@ class _HomeScreenState extends State<HomeScreen> {
   LatLng? _userLocation;
 
   BitmapDescriptor? _karaokeIcon;
+
+  // マーカータップ時の店舗情報表示用のState
+  PlaceResult? _selectedPlace;
+
+  final DraggableScrollableController _draggableScrollableController =
+      DraggableScrollableController();
 
   @override
   void initState() {
@@ -176,10 +183,7 @@ class _HomeScreenState extends State<HomeScreen> {
         markerId: MarkerId(place.placeId),
         position: LatLng(place.lat, place.lng),
         icon: _karaokeIcon ?? BitmapDescriptor.defaultMarker,
-        infoWindow: InfoWindow(
-          title: place.name,
-          snippet: place.address,
-        ),
+        onTap: () => _onMarkerTapped(place),
       );
     }).toSet();
 
@@ -214,91 +218,56 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // マーカータップ時のハンドラ
+  void _onMarkerTapped(PlaceResult place) {
+    setState(() {
+      _selectedPlace = place;
+    });
+
+    // モーダルを最小サイズに設定
+    _draggableScrollableController.animateTo(
+      _kMinModalSize,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(
-        index: _selectedIndex,
+      body: Stack(
         children: [
-          // 検索画面
-          Stack(
-            children: [
-              // Google Maps
-              MapWidget(
-                markers: _markers,
-                onMapCreated: (controller) => _mapController = controller,
-              ),
-
-              Column(
-                children: [
-                  SearchHeaderWidget(
-                  key: _headerKey,
-                  searchController: _searchController,
-                  onSearch: _performSearch, // 更新した検索メソッドを使用
-                ),
-                              Container(
-                margin: const EdgeInsets.all(16.0),
-                padding: const EdgeInsets.all(12.0),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8.0),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      spreadRadius: 1,
-                      blurRadius: 3,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Text(
-                      'カラオケ店舗名',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      '住所が入ります',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-                ],
-              ),
-
-
-              // モーダル
-              DraggableScrollableSheet(
-                initialChildSize: _kMiddleModalSize,
-                minChildSize: _kMinModalSize,
-                maxChildSize: _maxModalSize,
-                snap: true,
-                snapSizes: [_kMinModalSize, _kMiddleModalSize, _maxModalSize],
-                builder: (context, scrollController) {
-                  return SearchResultModalWidget(
-                    scrollController: scrollController,
-                    searchResults: _searchResults,
-                  );
-                },
-              ),
-            ],
+          MapWidget(
+            markers: _markers,
+            onMapCreated: (controller) => _mapController = controller,
           ),
-
-          // 履歴画面
-          const HistoryScreen(),
-
-          // 設定画面
-          const SettingsScreen(),
+          SearchHeaderWidget(
+            key: _headerKey,
+            searchController: _searchController,
+            onSearch: _performSearch,
+          ),
+          if (_selectedPlace != null)
+            Positioned(
+              left: 16,
+              right: 16,
+              bottom: MediaQuery.of(context).size.height * _kMinModalSize +
+                  16, // モーダルの上に配置
+              child: PlaceInfoWindow(place: _selectedPlace!),
+            ),
+          DraggableScrollableSheet(
+            controller: _draggableScrollableController,
+            initialChildSize: _kMiddleModalSize,
+            minChildSize: _kMinModalSize,
+            maxChildSize: _maxModalSize,
+            snap: true,
+            snapSizes: [_kMinModalSize, _kMiddleModalSize, _maxModalSize],
+            builder: (context, scrollController) {
+              return SearchResultModalWidget(
+                scrollController: scrollController,
+                searchResults: _searchResults,
+              );
+            },
+          ),
         ],
       ),
       bottomNavigationBar: BottomNavigationWidget(
