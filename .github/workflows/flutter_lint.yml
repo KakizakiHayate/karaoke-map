@@ -1,0 +1,24 @@
+name: Flutter Lint
+
+on:
+  pull_request:
+    branches:
+      - develop
+      - 'feature/**'  # feature/hoge などにマッチ
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 'stable'
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run flutter analyze
+        run: flutter analyze 
