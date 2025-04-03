@@ -4,7 +4,7 @@ on:
   pull_request:
     branches:
       - develop
-      - 'feature/**'  # feature/hoge などにマッチ
+      - 'feature/**'
 
 jobs:
   analyze:
@@ -15,10 +15,10 @@ jobs:
 
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: 'stable'
+          flutter-version: '3.24.4'
 
       - name: Install dependencies
         run: flutter pub get
 
       - name: Run flutter analyze
-        run: flutter analyze 
+        run: flutter analyze
