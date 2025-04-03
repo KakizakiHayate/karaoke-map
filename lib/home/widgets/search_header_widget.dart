@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../screens/karaoke_chain_settings_screen.dart';
 import '../screens/search_detail_screen.dart';
+import '../../app_state.dart';
 
 class SearchHeaderWidget extends StatefulWidget {
   final TextEditingController? searchController;
@@ -65,12 +67,15 @@ class _SearchHeaderWidgetState extends State<SearchHeaderWidget> {
                     controller: _searchController,
                     readOnly: true,
                     onTap: () async {
+                      final userId = context.read<AppState>().userId;
+                      if (userId == null) return;
+
                       final result = await Navigator.push(
                         context,
                         PageRouteBuilder(
                           pageBuilder:
                               (context, animation, secondaryAnimation) =>
-                                  const SearchDetailScreen(),
+                                  SearchDetailScreen(userId: userId),
                           transitionsBuilder:
                               (context, animation, secondaryAnimation, child) {
                             return FadeTransition(
@@ -84,7 +89,7 @@ class _SearchHeaderWidgetState extends State<SearchHeaderWidget> {
 
                       if (result != null && result is String) {
                         setState(() {
-                          _searchController.text = result; // テキストフィールドを更新
+                          _searchController.text = result;
                         });
                         widget.onSearch?.call(result);
                       }

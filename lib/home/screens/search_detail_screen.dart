@@ -2,10 +2,17 @@ import 'package:flutter/material.dart';
 import '../../models/place_suggestion.dart';
 import '../../models/place_result.dart';
 import '../../services/places_service.dart';
+import '../../services/search_history_service.dart';
+import '../../models/search_history.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class SearchDetailScreen extends StatefulWidget {
-  const SearchDetailScreen({super.key});
+  final int userId;
+
+  const SearchDetailScreen({
+    super.key,
+    required this.userId,
+  });
 
   @override
   State<SearchDetailScreen> createState() => _SearchDetailScreenState();
@@ -15,18 +22,37 @@ class _SearchDetailScreenState extends State<SearchDetailScreen> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _focusNode = FocusNode();
   final PlacesService _placesService = PlacesService();
+  final SearchHistoryService _historyService = SearchHistoryService();
 
   List<PlaceSuggestion> _suggestions = [];
   List<PlaceResult> _searchResults = [];
+  List<SearchHistory> _searchHistory = [];
   bool _isSearching = false;
 
   @override
   void initState() {
     super.initState();
-    // 画面表示時に自動的にフォーカスを当てる
+    _loadSearchHistory();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _focusNode.requestFocus();
     });
+  }
+
+  Future<void> _loadSearchHistory() async {
+    final history = await _historyService.getUserSearchHistory(widget.userId);
+    setState(() {
+      _searchHistory = history;
+    });
+  }
+
+  Future<void> _saveSearchHistory(String query, String type) async {
+    final history = SearchHistory(
+      userId: widget.userId,
+      searchQuery: query,
+      searchType: type,
+    );
+    await _historyService.saveSearchHistory(history);
+    await _loadSearchHistory();
   }
 
   @override
@@ -59,6 +85,7 @@ class _SearchDetailScreenState extends State<SearchDetailScreen> {
 
   Future<void> _onSuggestionSelected(PlaceSuggestion suggestion) async {
     _searchController.text = suggestion.mainText;
+    await _saveSearchHistory(suggestion.mainText, 'location');
     Navigator.pop(context, suggestion.mainText);
   }
 
@@ -87,6 +114,12 @@ class _SearchDetailScreenState extends State<SearchDetailScreen> {
           ),
           style: Theme.of(context).textTheme.titleLarge,
           onChanged: _onSearchChanged,
+          onSubmitted: (value) async {
+            if (value.isNotEmpty) {
+              await _saveSearchHistory(value, 'location');
+              Navigator.pop(context, value);
+            }
+          },
         ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
@@ -111,12 +144,59 @@ class _SearchDetailScreenState extends State<SearchDetailScreen> {
                       ),
                     ),
                     title: const Text('現在地から検索'),
-                    onTap: () {
-                      // TODO: 現在地を使用した検索処理
-                      Navigator.pop(context);
+                    onTap: () async {
+                      await _saveSearchHistory('現在地', 'current_location');
+                      Navigator.pop(context, '');
                     },
                   ),
                   const Divider(height: 1),
+                  if (_searchHistory.isNotEmpty) ...[
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            '検索履歴',
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          TextButton(
+                            onPressed: () async {
+                              await _historyService
+                                  .deleteAllUserSearchHistory(widget.userId);
+                              await _loadSearchHistory();
+                            },
+                            child: const Text('すべて削除'),
+                          ),
+                        ],
+                      ),
+                    ),
+                    ..._searchHistory.map(
+                      (history) => ListTile(
+                        leading: Icon(
+                          history.searchType == 'current_location'
+                              ? Icons.my_location
+                              : Icons.search,
+                          color: Colors.grey,
+                        ),
+                        title: Text(history.searchQuery),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () async {
+                            if (history.id != null) {
+                              await _historyService
+                                  .deleteSearchHistory(history.id!);
+                              await _loadSearchHistory();
+                            }
+                          },
+                        ),
+                        onTap: () {
+                          Navigator.pop(context, history.searchQuery);
+                        },
+                      ),
+                    ),
+                    const Divider(height: 1),
+                  ],
                 ],
                 if (_suggestions.isNotEmpty)
                   ..._suggestions.map(

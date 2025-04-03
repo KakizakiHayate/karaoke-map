@@ -11,8 +11,14 @@ class DatabaseHelper {
 
   Future<Database> get database async {
     if (_database != null) return _database!;
-    _database = await _initDB('karaoke.db');
-    return _database!;
+
+    try {
+      _database = await _initDB('karaoke.db');
+      return _database!;
+    } catch (e) {
+      print('Database initialization error: $e');
+      rethrow;
+    }
   }
 
   Future<Database> _initDB(String filePath) async {
@@ -23,10 +29,35 @@ class DatabaseHelper {
       path,
       version: 1,
       onCreate: _createDB,
+      onConfigure: _onConfigure,
     );
   }
 
+  Future<void> _onConfigure(Database db) async {
+    await db.execute('PRAGMA foreign_keys = ON');
+  }
+
   Future<void> _createDB(Database db, int version) async {
+    // ユーザーテーブル
+    await db.execute('''
+      CREATE TABLE users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    ''');
+
+    // 検索履歴テーブル
+    await db.execute('''
+      CREATE TABLE search_histories (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        search_query TEXT NOT NULL,
+        search_type TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id)
+      )
+    ''');
+
     // カラオケチェーン店テーブル
     await db.execute('''
       CREATE TABLE karaoke_chains (
@@ -49,6 +80,7 @@ class DatabaseHelper {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (chain_id) REFERENCES karaoke_chains(id),
+        FOREIGN KEY (user_id) REFERENCES users(id),
         UNIQUE(user_id, chain_id)
       )
     ''');
@@ -58,6 +90,11 @@ class DatabaseHelper {
   }
 
   Future<void> _insertInitialData(Database db) async {
+    // 初期ユーザーの作成
+    await db.insert('users', {
+      'created_at': DateTime.now().toIso8601String(),
+    });
+
     final initialChains = [
       {'name': 'カラオケまねきねこ', 'default_order': 0},
       {'name': 'ビッグエコー', 'default_order': 1},
