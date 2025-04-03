@@ -5,11 +5,15 @@ import '../screens/search_detail_screen.dart';
 class SearchHeaderWidget extends StatefulWidget {
   final TextEditingController? searchController;
   final Function(String)? onSearch;
+  final Map<String, bool> selectedChains;
+  final Function(Map<String, bool>) onChainsUpdated;
 
   const SearchHeaderWidget({
     super.key,
     this.searchController,
     this.onSearch,
+    required this.selectedChains,
+    required this.onChainsUpdated,
   });
 
   @override
@@ -20,19 +24,6 @@ class _SearchHeaderWidgetState extends State<SearchHeaderWidget> {
   late final TextEditingController _searchController;
   String _selectedRadius = '500';
   final List<String> _radiusOptions = ['300', '500', '1000', '2000'];
-
-  final Map<String, bool> _selectedChains = {
-    'カラオケまねきねこ': true,
-    'ビッグエコー': true,
-    'カラオケBanBan': true,
-    'カラオケ館': true,
-    'ジャンカラ': true,
-    'JOYSOUND直営店': true,
-    'カラオケJOYJOY': true,
-    'コート・ダジュール': true,
-    'カラオケCLUB DAM': true,
-    'カラオケルーム歌広場': true,
-  };
 
   static const int _maxVisibleChains = 5;
 
@@ -53,7 +44,7 @@ class _SearchHeaderWidgetState extends State<SearchHeaderWidget> {
   @override
   Widget build(BuildContext context) {
     // 最初の5つのチェーン店のみを表示
-    final visibleChains = _selectedChains.entries.take(_maxVisibleChains);
+    final visibleChains = widget.selectedChains.entries.take(_maxVisibleChains);
 
     return Container(
       color: Colors.white,
@@ -150,9 +141,10 @@ class _SearchHeaderWidgetState extends State<SearchHeaderWidget> {
                             label: Text(entry.key),
                             selected: entry.value,
                             onSelected: (bool selected) {
-                              setState(() {
-                                _selectedChains[entry.key] = selected;
-                              });
+                              final newChains =
+                                  Map<String, bool>.from(widget.selectedChains);
+                              newChains[entry.key] = selected;
+                              widget.onChainsUpdated(newChains);
                             },
                           ),
                         );
@@ -166,16 +158,16 @@ class _SearchHeaderWidgetState extends State<SearchHeaderWidget> {
                       context,
                       MaterialPageRoute(
                         builder: (context) => KaraokeChainSettingsScreen(
-                          initialSelectedChains: _selectedChains,
+                          initialSelectedChains: widget.selectedChains,
                         ),
                       ),
                     );
 
                     if (result != null) {
-                      setState(() {
-                        _selectedChains.clear();
-                        _selectedChains.addAll(result);
-                      });
+                      widget.onChainsUpdated(result);
+                      if (_searchController.text.isNotEmpty) {
+                        widget.onSearch?.call(_searchController.text);
+                      }
                     }
                   },
                   child: const Text('すべて表示'),

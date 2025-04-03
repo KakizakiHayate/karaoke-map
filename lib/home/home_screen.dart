@@ -14,6 +14,7 @@ import 'dart:ui' as ui;
 import 'dart:typed_data'; // Uint8List用
 import 'package:flutter/rendering.dart';
 import 'widgets/place_info_window.dart';
+import '../services/karaoke_chain_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -65,13 +66,48 @@ class _HomeScreenState extends State<HomeScreen> {
   final DraggableScrollableController _draggableScrollableController =
       DraggableScrollableController();
 
+  // KaraokeChainServiceのインスタンスを追加
+  final KaraokeChainService _karaokeChainService = KaraokeChainService();
+
+  // 選択されたカラオケチェーン店の状態を追加
+  Map<String, bool> _selectedChains = {};
+
   @override
   void initState() {
     super.initState();
     _getCurrentLocation();
     _loadKaraokeIcon();
+    _loadSelectedChains(); // チェーン店の選択状態を読み込む
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _updateMaxModalSize();
+    });
+  }
+
+  // チェーン店の選択状態を読み込むメソッドを追加
+  Future<void> _loadSelectedChains() async {
+    final chains = await _karaokeChainService.getAllChains();
+    final selectedChains =
+        await _karaokeChainService.getSelectedChains(1); // 仮のユーザーID: 1
+
+    setState(() {
+      _selectedChains = {
+        for (var chain in chains)
+          chain.name: selectedChains.any((selected) => selected.id == chain.id)
+      };
+    });
+  }
+
+  // チェーン店の選択状態を保存するメソッドを追加
+  Future<void> _saveSelectedChains(Map<String, bool> newChains) async {
+    final chains = await _karaokeChainService.getAllChains();
+
+    for (var chain in chains) {
+      final isSelected = newChains[chain.name] ?? false;
+      await _karaokeChainService.updateChainSelection(1, chain.id!, isSelected);
+    }
+
+    setState(() {
+      _selectedChains = newChains;
     });
   }
 
@@ -172,12 +208,13 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     }
 
-    // 検索実行
+    // 検索実行時に選択されたチェーン店の情報を渡す
     final results = await PlacesService().searchKaraoke(
       query,
       userLocation: _userLocation,
       searchLocation: searchLocation,
       isStation: isStation,
+      selectedChains: _selectedChains, // 選択されたチェーン店を追加
     );
 
     // マーカーを更新
@@ -264,6 +301,16 @@ class _HomeScreenState extends State<HomeScreen> {
             key: _headerKey,
             searchController: _searchController,
             onSearch: _performSearch,
+            selectedChains: _selectedChains,
+            onChainsUpdated: (newChains) async {
+              await _saveSelectedChains(newChains);
+
+              // 強制的に現在の検索を再実行
+              final currentQuery = _searchController.text;
+              if (currentQuery.isNotEmpty) {
+                await _performSearch(currentQuery);
+              }
+            },
           ),
           if (_selectedPlace != null)
             Positioned(

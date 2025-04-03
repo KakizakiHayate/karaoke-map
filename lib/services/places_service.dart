@@ -43,6 +43,7 @@ class PlacesService {
     LatLng? userLocation,
     LatLng? searchLocation,
     bool isStation = false,
+    required Map<String, bool> selectedChains,
   }) async {
     print('Search params - Query: $query, IsStation: $isStation'); // デバッグ用
 
@@ -56,7 +57,17 @@ class PlacesService {
     final searchJson = jsonDecode(searchResponse.body);
     if (searchJson['status'] != 'OK') return [];
 
-    final futures = (searchJson['results'] as List).map((place) async {
+    // 検索結果をフィルタリング
+    final filteredResults = (searchJson['results'] as List).where((place) {
+      final placeName = place['name'] as String;
+      // 選択されたチェーン店に含まれているかチェック
+      return selectedChains.entries
+          .where((entry) => entry.value) // trueのものだけ
+          .any((entry) => placeName.contains(entry.key));
+    }).toList();
+
+    // フィルタリングされた結果に対して詳細情報を取得
+    final futures = filteredResults.map((place) async {
       // 詳細情報を取得
       final detailsUrl = Uri.parse(
         '$_baseUrl/details/json?place_id=${place['place_id']}&language=ja&fields=formatted_phone_number,website,opening_hours,photos&key=$_apiKey',
