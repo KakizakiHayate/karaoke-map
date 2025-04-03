@@ -2,17 +2,25 @@ import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import '../models/karaoke_chain.dart';
 import '../models/user_chain_setting.dart';
+import 'package:logger/logger.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
   static Database? _database;
+  final Logger _logger = Logger();
 
   DatabaseHelper._init();
 
   Future<Database> get database async {
     if (_database != null) return _database!;
-    _database = await _initDB('karaoke.db');
-    return _database!;
+
+    try {
+      _database = await _initDB('karaoke.db');
+      return _database!;
+    } catch (e) {
+      _logger.e('Database initialization error: $e');
+      rethrow;
+    }
   }
 
   Future<Database> _initDB(String filePath) async {
@@ -23,10 +31,35 @@ class DatabaseHelper {
       path,
       version: 1,
       onCreate: _createDB,
+      onConfigure: _onConfigure,
     );
   }
 
+  Future<void> _onConfigure(Database db) async {
+    await db.execute('PRAGMA foreign_keys = ON');
+  }
+
   Future<void> _createDB(Database db, int version) async {
+    // ユーザーテーブル
+    await db.execute('''
+      CREATE TABLE users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    ''');
+
+    // 検索履歴テーブル
+    await db.execute('''
+      CREATE TABLE search_histories (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        search_query TEXT NOT NULL,
+        search_type TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id)
+      )
+    ''');
+
     // カラオケチェーン店テーブル
     await db.execute('''
       CREATE TABLE karaoke_chains (
@@ -49,6 +82,7 @@ class DatabaseHelper {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (chain_id) REFERENCES karaoke_chains(id),
+        FOREIGN KEY (user_id) REFERENCES users(id),
         UNIQUE(user_id, chain_id)
       )
     ''');
@@ -58,6 +92,11 @@ class DatabaseHelper {
   }
 
   Future<void> _insertInitialData(Database db) async {
+    // 初期ユーザーの作成
+    await db.insert('users', {
+      'created_at': DateTime.now().toIso8601String(),
+    });
+
     final initialChains = [
       {'name': 'カラオケまねきねこ', 'default_order': 0},
       {'name': 'ビッグエコー', 'default_order': 1},
@@ -105,7 +144,7 @@ class DatabaseHelper {
 
   Future<List<KaraokeChain>> readAllChains() async {
     final db = await database;
-    final orderBy = 'default_order ASC';
+    const orderBy = 'default_order ASC';
     final result = await db.query('karaoke_chains', orderBy: orderBy);
 
     return result.map((json) => KaraokeChain.fromMap(json)).toList();
@@ -153,7 +192,7 @@ class DatabaseHelper {
 
   Future<List<UserChainSetting>> readUserSettings(int userId) async {
     final db = await database;
-    final orderBy = 'display_order ASC';
+    const orderBy = 'display_order ASC';
     final result = await db.query(
       'user_chain_settings',
       where: 'user_id = ?',

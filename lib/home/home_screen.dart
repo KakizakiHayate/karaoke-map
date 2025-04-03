@@ -5,16 +5,14 @@ import 'widgets/search_header_widget.dart';
 import 'widgets/map_widget.dart';
 import 'widgets/search_result_modal_widget.dart';
 import 'widgets/bottom_navigation_widget.dart';
+import '../services/places_service.dart';
+import 'package:geolocator/geolocator.dart';
+import 'widgets/place_info_window.dart';
+import '../services/karaoke_chain_service.dart';
+import 'package:logger/logger.dart';
 import 'screens/search_screen.dart';
 import 'screens/history_screen.dart';
 import 'screens/settings_screen.dart';
-import '../services/places_service.dart';
-import 'package:geolocator/geolocator.dart';
-import 'dart:ui' as ui;
-import 'dart:typed_data'; // Uint8List用
-import 'package:flutter/rendering.dart';
-import 'widgets/place_info_window.dart';
-import '../services/karaoke_chain_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -24,7 +22,6 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  // マジックナンバーを定数として定義
   static const double _kDefaultMaxModalSize = 0.9;
   static const double _kMinModalSize = 0.1;
   static const double _kMiddleModalSize = 0.45;
@@ -32,13 +29,9 @@ class _HomeScreenState extends State<HomeScreen> {
   static const LatLng _kTokyoStationLocation = LatLng(35.6812, 139.7671);
 
   final GlobalKey _headerKey = GlobalKey();
-  double _maxModalSize = _kDefaultMaxModalSize; // デフォルト値を定数から設定
+  double _maxModalSize = _kDefaultMaxModalSize;
   int _selectedIndex = 0;
-
-  static const CameraPosition _kInitialPosition = CameraPosition(
-    target: _kTokyoStationLocation, // 東京駅付近
-    zoom: _kMapZoomLevel,
-  );
+  final Logger _logger = Logger();
 
   final TextEditingController _searchController = TextEditingController();
   List<PlaceResult> _searchResults = [];
@@ -142,55 +135,14 @@ class _HomeScreenState extends State<HomeScreen> {
         _userLocation = LatLng(position.latitude, position.longitude);
       });
     } catch (e) {
-      print('Error getting location: $e');
+      _logger.e('Error getting location: $e');
     }
   }
 
   Future<void> _loadKaraokeIcon() async {
-    _karaokeIcon = await BitmapDescriptor.fromBytes(
-      await _getBytesFromCanvas(
-        const Icon(
-          Icons.mic, // または Icons.mic_external_on
-          color: Colors.red,
-          size: 64,
-        ),
-      ),
+    _karaokeIcon = BitmapDescriptor.defaultMarkerWithHue(
+      BitmapDescriptor.hueRed,
     );
-  }
-
-  Future<Uint8List> _getBytesFromCanvas(Widget widget,
-      {Size size = const Size(64, 64)}) async {
-    final pictureRecorder = ui.PictureRecorder();
-    final canvas = Canvas(pictureRecorder);
-    final painter = TextPainter(textDirection: TextDirection.ltr);
-    final builder = widget as Icon;
-
-    // 白い円を描画（背景）
-    final paint = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.fill;
-    canvas.drawCircle(size.center(Offset.zero), size.width / 2, paint);
-
-    // アイコンを描画
-    painter.text = TextSpan(
-      text: String.fromCharCode(builder.icon!.codePoint),
-      style: TextStyle(
-        fontSize: builder.size,
-        fontFamily: builder.icon!.fontFamily,
-        color: builder.color,
-      ),
-    );
-    painter.layout();
-    painter.paint(
-      canvas,
-      size.center(Offset(-painter.width / 2, -painter.height / 2)),
-    );
-
-    final picture = pictureRecorder.endRecording();
-    final image =
-        await picture.toImage(size.width.toInt(), size.height.toInt());
-    final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
-    return bytes!.buffer.asUint8List();
   }
 
   Future<void> _performSearch(String query) async {
@@ -293,53 +245,59 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          MapWidget(
-            markers: _markers,
-            onMapCreated: (controller) => _mapController = controller,
-          ),
-          SearchHeaderWidget(
-            key: _headerKey,
-            searchController: _searchController,
-            onSearch: _performSearch,
-            selectedChains: _selectedChains,
-            onChainsUpdated: (newChains) async {
-              await _saveSelectedChains(newChains);
-
-              // 強制的に現在の検索を再実行
-              final currentQuery = _searchController.text;
-              if (currentQuery.isNotEmpty) {
-                await _performSearch(currentQuery);
-              }
-            },
-          ),
-          if (_selectedPlace != null)
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: MediaQuery.of(context).size.height * _kMinModalSize + 16,
-              child: PlaceInfoWindow(
-                places: _searchResults,
-                selectedIndex: _selectedPlaceIndex,
-                onPageChanged: _onPageChanged,
-              ),
+          if (_selectedIndex == 0) ...[
+            MapWidget(
+              markers: _markers,
+              onMapCreated: (controller) => _mapController = controller,
+              initialLocation: _userLocation ?? _kTokyoStationLocation,
+              initialZoom: _kMapZoomLevel,
             ),
-          DraggableScrollableSheet(
-            controller: _draggableScrollableController,
-            initialChildSize: _kMiddleModalSize,
-            minChildSize: _kMinModalSize,
-            maxChildSize: _maxModalSize,
-            snap: true,
-            snapSizes: [_kMinModalSize, _kMiddleModalSize, _maxModalSize],
-            builder: (context, scrollController) {
-              return Material(
-                elevation: 8,
-                child: SearchResultModalWidget(
-                  scrollController: scrollController,
-                  searchResults: _searchResults,
+            SearchHeaderWidget(
+              key: _headerKey,
+              searchController: _searchController,
+              onSearch: _performSearch,
+              selectedChains: _selectedChains,
+              onChainsUpdated: (newChains) async {
+                await _saveSelectedChains(newChains);
+
+                // 強制的に現在の検索を再実行
+                final currentQuery = _searchController.text;
+                if (currentQuery.isNotEmpty) {
+                  await _performSearch(currentQuery);
+                }
+              },
+            ),
+            if (_selectedPlace != null)
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom:
+                    MediaQuery.of(context).size.height * _kMinModalSize + 16,
+                child: PlaceInfoWindow(
+                  places: _searchResults,
+                  selectedIndex: _selectedPlaceIndex,
+                  onPageChanged: _onPageChanged,
                 ),
-              );
-            },
-          ),
+              ),
+            DraggableScrollableSheet(
+              controller: _draggableScrollableController,
+              initialChildSize: _kMiddleModalSize,
+              minChildSize: _kMinModalSize,
+              maxChildSize: _maxModalSize,
+              snap: true,
+              snapSizes: [_kMinModalSize, _kMiddleModalSize, _maxModalSize],
+              builder: (context, scrollController) {
+                return Material(
+                  elevation: 8,
+                  child: SearchResultModalWidget(
+                    scrollController: scrollController,
+                    searchResults: _searchResults,
+                  ),
+                );
+              },
+            ),
+          ] else
+            _screens[_selectedIndex],
         ],
       ),
       bottomNavigationBar: BottomNavigationWidget(

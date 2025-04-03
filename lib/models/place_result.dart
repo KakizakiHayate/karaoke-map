@@ -1,4 +1,7 @@
+import 'package:logger/logger.dart';
+
 class PlaceResult {
+  static final Logger _logger = Logger();
   final String placeId;
   final String name;
   final String address;
@@ -58,7 +61,7 @@ class PlaceResult {
           };
         }
       } catch (e) {
-        print('Error parsing opening hours: $e');
+        _logger.e('Error parsing opening hours: $e');
         hours = null;
       }
     }
@@ -92,13 +95,13 @@ class PlaceResult {
 
   String getDistanceText() {
     if (distance == null) {
-      print('Distance is null');
+      _logger.d('Distance is null');
       return '';
     }
 
-    print('Distance type: $distanceType');
-    print('Station name: $stationName');
-    print('Nearest station: $nearestStation');
+    _logger.d('Distance type: $distanceType');
+    _logger.d('Station name: $stationName');
+    _logger.d('Nearest station: $nearestStation');
 
     switch (distanceType) {
       case 'current':
