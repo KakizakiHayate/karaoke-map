@@ -7,8 +7,8 @@ import 'services/database_helper.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // データベースの初期化を確実に行う
-  final db = await DatabaseHelper.instance.database;
+  // データベースの初期化
+  await DatabaseHelper.instance.database;
 
   // AppStateの初期化
   final appState = AppState();

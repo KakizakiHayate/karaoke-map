@@ -2,10 +2,12 @@ import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import '../models/karaoke_chain.dart';
 import '../models/user_chain_setting.dart';
+import 'package:logger/logger.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
   static Database? _database;
+  final Logger _logger = Logger();
 
   DatabaseHelper._init();
 
@@ -16,7 +18,7 @@ class DatabaseHelper {
       _database = await _initDB('karaoke.db');
       return _database!;
     } catch (e) {
-      print('Database initialization error: $e');
+      _logger.e('Database initialization error: $e');
       rethrow;
     }
   }
@@ -142,7 +144,7 @@ class DatabaseHelper {
 
   Future<List<KaraokeChain>> readAllChains() async {
     final db = await database;
-    final orderBy = 'default_order ASC';
+    const orderBy = 'default_order ASC';
     final result = await db.query('karaoke_chains', orderBy: orderBy);
 
     return result.map((json) => KaraokeChain.fromMap(json)).toList();
@@ -190,7 +192,7 @@ class DatabaseHelper {
 
   Future<List<UserChainSetting>> readUserSettings(int userId) async {
     final db = await database;
-    final orderBy = 'display_order ASC';
+    const orderBy = 'display_order ASC';
     final result = await db.query(
       'user_chain_settings',
       where: 'user_id = ?',

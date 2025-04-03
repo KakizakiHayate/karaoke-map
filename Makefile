@@ -14,3 +14,9 @@ get:
 
 run:
 	flutter run
+
+analyze:
+	flutter analyze
+
+a: analyze
+

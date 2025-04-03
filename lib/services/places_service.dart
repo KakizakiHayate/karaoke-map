@@ -4,10 +4,12 @@ import '../models/place_suggestion.dart';
 import '../models/place_result.dart';
 import 'dart:math';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:logger/logger.dart';
 
 class PlacesService {
   static const String _apiKey = 'AIzaSyAECg6Ww6B3v3YtibYZkUXE_5tditY5eqI';
   static const String _baseUrl = 'https://maps.googleapis.com/maps/api/place';
+  final Logger _logger = Logger();
 
   Future<List<PlaceSuggestion>> getAutocompleteSuggestions(
     String input,
@@ -19,8 +21,8 @@ class PlacesService {
 
     try {
       final response = await http.get(url);
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
+      _logger.d('Response status: ${response.statusCode}');
+      _logger.d('Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final json = jsonDecode(response.body);
@@ -29,11 +31,11 @@ class PlacesService {
               .map((p) => PlaceSuggestion.fromJson(p))
               .toList();
         }
-        print('API Status: ${json['status']}');
-        print('Error Message: ${json['error_message']}');
+        _logger.w('API Status: ${json['status']}');
+        _logger.w('Error Message: ${json['error_message']}');
       }
     } catch (e) {
-      print('Error fetching suggestions: $e');
+      _logger.e('Error fetching suggestions: $e');
     }
     return [];
   }
@@ -45,7 +47,7 @@ class PlacesService {
     bool isStation = false,
     required Map<String, bool> selectedChains,
   }) async {
-    print('Search params - Query: $query, IsStation: $isStation'); // デバッグ用
+    _logger.d('Search params - Query: $query, IsStation: $isStation');
 
     final searchUrl = Uri.parse(
       '$_baseUrl/textsearch/json?query=カラオケ $query&language=ja&region=jp&key=$_apiKey',
@@ -77,16 +79,17 @@ class PlacesService {
       if (detailsResponse.statusCode == 200) {
         final detailsJson = jsonDecode(detailsResponse.body);
         if (detailsJson['status'] == 'OK') {
-          print('Place Details Response for ${place['name']}:');
-          print('Opening hours: ${detailsJson['result']['opening_hours']}');
-          print(
+          _logger.d('Place Details Response for ${place['name']}:');
+          _logger.d('Opening hours: ${detailsJson['result']['opening_hours']}');
+          _logger.d(
               'Periods: ${detailsJson['result']['opening_hours']?['periods']}');
-          print(
+          _logger.d(
               'Open now: ${detailsJson['result']['opening_hours']?['open_now']}');
-          print(
+          _logger.d(
               'Weekday text: ${detailsJson['result']['opening_hours']?['weekday_text']}');
-          print('Phone: ${detailsJson['result']['formatted_phone_number']}');
-          print('Website: ${detailsJson['result']['website']}');
+          _logger
+              .d('Phone: ${detailsJson['result']['formatted_phone_number']}');
+          _logger.d('Website: ${detailsJson['result']['website']}');
           place.addAll(detailsJson['result']);
         }
       }
@@ -109,8 +112,7 @@ class PlacesService {
           place['distance'] = distance;
           place['distance_type'] = 'station';
           place['station_name'] = query;
-          print(
-              'Station search - Distance: $distance, Station: $query'); // デバッグ用
+          _logger.d('Station search - Distance: $distance, Station: $query');
         }
       } else if (query.isEmpty && userLocation != null) {
         // 現在地検索の場合
@@ -122,18 +124,18 @@ class PlacesService {
         );
         place['distance'] = distance;
         place['distance_type'] = 'current';
-        print('Current location search - Distance: $distance'); // デバッグ用
+        _logger.d('Current location search - Distance: $distance');
       } else {
         // エリア検索の場合
-        print('Area search - Finding nearest station...'); // デバッグ用
+        _logger.d('Area search - Finding nearest station...');
         final nearestStation = await _findNearestStation(placeLocation);
         if (nearestStation != null) {
           // 最寄り駅情報と距離を設定
           place['nearest_station'] = nearestStation;
           place['distance'] = nearestStation['distance'];
           place['distance_type'] = 'nearest';
-          print(
-              'Found nearest station: ${nearestStation['name']} - Distance: ${nearestStation['distance']}m'); // デバッグ用
+          _logger.d(
+              'Found nearest station: ${nearestStation['name']} - Distance: ${nearestStation['distance']}m');
         }
       }
 
@@ -209,5 +211,39 @@ class PlacesService {
       }
     }
     return null;
+  }
+
+  Future<List<PlaceResult>> searchNearby(double lat, double lng) async {
+    try {
+      final url = Uri.parse(
+        'https://maps.googleapis.com/maps/api/place/nearbysearch/json?'
+        'location=$lat,$lng'
+        '&radius=1500'
+        '&type=establishment'
+        '&keyword=カラオケ'
+        '&language=ja'
+        '&key=$_apiKey',
+      );
+
+      _logger.d('Searching nearby places at: $lat, $lng');
+      final response = await http.get(url);
+      final data = json.decode(response.body);
+
+      if (data['status'] != 'OK') {
+        _logger.w('API returned status: ${data['status']}');
+        return [];
+      }
+
+      final List<PlaceResult> results = [];
+      for (var place in data['results']) {
+        results.add(PlaceResult.fromJson(place));
+      }
+
+      _logger.i('Found ${results.length} nearby places');
+      return results;
+    } catch (e) {
+      _logger.e('Error searching nearby places: $e');
+      return [];
+    }
   }
 }

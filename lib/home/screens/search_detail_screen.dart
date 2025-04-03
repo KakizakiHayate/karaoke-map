@@ -77,6 +77,7 @@ class _SearchDetailScreenState extends State<SearchDetailScreen> {
       value,
       'ja',
     );
+    if (!mounted) return;
     setState(() {
       _suggestions = suggestions;
       _isSearching = false;
@@ -84,15 +85,17 @@ class _SearchDetailScreenState extends State<SearchDetailScreen> {
   }
 
   Future<void> _onSuggestionSelected(PlaceSuggestion suggestion) async {
-    _searchController.text = suggestion.mainText;
-    await _saveSearchHistory(suggestion.mainText, 'location');
-    Navigator.pop(context, suggestion.mainText);
+    final String text = suggestion.mainText;
+    if (!mounted) return;
+    _searchController.text = text;
+    Navigator.pop(context, text);
   }
 
   Future<void> _openInMaps(PlaceResult place) async {
     final url = Uri.parse(
       'https://www.google.com/maps/search/?api=1&query=${place.lat},${place.lng}',
     );
+    if (!mounted) return;
     if (await canLaunchUrl(url)) {
       await launchUrl(url);
     }
@@ -116,8 +119,10 @@ class _SearchDetailScreenState extends State<SearchDetailScreen> {
           onChanged: _onSearchChanged,
           onSubmitted: (value) async {
             if (value.isNotEmpty) {
+              final navigator = Navigator.of(context);
+              if (!mounted) return;
               await _saveSearchHistory(value, 'location');
-              Navigator.pop(context, value);
+              navigator.pop(value);
             }
           },
         ),
@@ -145,8 +150,10 @@ class _SearchDetailScreenState extends State<SearchDetailScreen> {
                     ),
                     title: const Text('現在地から検索'),
                     onTap: () async {
+                      final navigator = Navigator.of(context);
+                      if (!mounted) return;
                       await _saveSearchHistory('現在地', 'current_location');
-                      Navigator.pop(context, '');
+                      navigator.pop('');
                     },
                   ),
                   const Divider(height: 1),
@@ -162,6 +169,7 @@ class _SearchDetailScreenState extends State<SearchDetailScreen> {
                           ),
                           TextButton(
                             onPressed: () async {
+                              if (!mounted) return;
                               await _historyService
                                   .deleteAllUserSearchHistory(widget.userId);
                               await _loadSearchHistory();
@@ -184,6 +192,7 @@ class _SearchDetailScreenState extends State<SearchDetailScreen> {
                           icon: const Icon(Icons.close),
                           onPressed: () async {
                             if (history.id != null) {
+                              if (!mounted) return;
                               await _historyService
                                   .deleteSearchHistory(history.id!);
                               await _loadSearchHistory();
@@ -191,7 +200,8 @@ class _SearchDetailScreenState extends State<SearchDetailScreen> {
                           },
                         ),
                         onTap: () {
-                          Navigator.pop(context, history.searchQuery);
+                          final navigator = Navigator.of(context);
+                          navigator.pop(history.searchQuery);
                         },
                       ),
                     ),
@@ -252,7 +262,7 @@ class _SearchDetailScreenState extends State<SearchDetailScreen> {
                               ],
                             ),
                           ),
-                          ButtonBar(
+                          OverflowBar(
                             children: [
                               TextButton.icon(
                                 icon: const Icon(Icons.directions),

@@ -1,5 +1,3 @@
-import 'package:sqflite/sqflite.dart';
-
 class KaraokeChain {
   final int? id;
   final String name;

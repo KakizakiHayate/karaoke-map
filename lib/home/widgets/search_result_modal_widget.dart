@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../models/place_result.dart';
 import '../../services/places_service.dart';
 
@@ -253,9 +254,10 @@ class _SearchResultModalWidgetState extends State<SearchResultModalWidget> {
   }
 
   Future<void> _sharePlace(PlaceResult place) async {
-    final url =
-        'https://www.google.com/maps/search/?api=1&query=${place.lat},${place.lng}';
-    // Share.shareの実装が必要です
+    await Share.share(
+      'https://www.google.com/maps/search/?api=1&query=${place.lat},${place.lng}',
+      subject: place.name,
+    );
   }
 
   Future<void> _callPhone(String phoneNumber) async {
