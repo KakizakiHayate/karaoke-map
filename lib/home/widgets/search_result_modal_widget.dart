@@ -3,6 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../models/place_result.dart';
 import '../../services/places_service.dart';
+import '../../theme/app_theme.dart';
 
 class SearchResultModalWidget extends StatefulWidget {
   final ScrollController scrollController;
@@ -69,131 +70,62 @@ class _SearchResultModalWidgetState extends State<SearchResultModalWidget> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 店名とレビュー情報
+          // カラオケ店の写真が存在する場合のみ表示
+          if (result.photoReference != null)
+            ClipRRect(
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(12)),
+              child: Image.network(
+                PlacesService().getPhotoUrl(result.photoReference!),
+                height: 160,
+                width: double.infinity,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    height: 100,
+                    color: AppTheme.primaryBlue.withOpacity(0.1),
+                    child: const Center(
+                      child: Icon(Icons.image_not_supported),
+                    ),
+                  );
+                },
+              ),
+            ),
+
+          // 基本情報
           Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(
                       child: Text(
                         result.name,
                         style: const TextStyle(
                           fontSize: 16,
-                          color: Color(0xFF1A1A1A),
+                          color: AppTheme.textPrimary,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
-                    if (result.getDistanceText().isNotEmpty)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF00AEEF).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.directions_walk,
-                              size: 14,
-                              color: Color(0xFF00AEEF),
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              result.getDistanceText(),
-                              style: const TextStyle(
-                                color: Color(0xFF00AEEF),
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
-                        ),
+                    if (result.rating > 0)
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.star,
+                            size: 16,
+                            color: Colors.amber[700],
+                          ),
+                          const SizedBox(width: 4),
+                          Text('${result.rating}'),
+                        ],
                       ),
                   ],
                 ),
                 const SizedBox(height: 8),
-                // レビュー情報
-                Row(
-                  children: [
-                    // 星の表示
-                    Row(
-                      children: List.generate(5, (index) {
-                        return Icon(
-                          index < result.rating.floor()
-                              ? Icons.star
-                              : index < result.rating
-                                  ? Icons.star_half
-                                  : Icons.star_border,
-                          size: 16,
-                          color: const Color(0xFF00AEEF),
-                        );
-                      }),
-                    ),
-                    const SizedBox(width: 4),
-                    // 評価点数
-                    Text(
-                      result.rating.toString(),
-                      style: const TextStyle(
-                        color: Color(0xFF1A1A1A),
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    // レビュー数
-                    Text(
-                      '(${result.userRatingsTotal})',
-                      style: const TextStyle(
-                        color: Color(0xFF1A1A1A),
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
 
-          // 店舗画像
-          if (result.photoReference != null)
-            ClipRRect(
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(4),
-                bottomRight: Radius.circular(4),
-              ),
-              child: Image.network(
-                PlacesService().getPhotoUrl(result.photoReference!),
-                height: 180,
-                width: double.infinity,
-                fit: BoxFit.cover,
-              ),
-            )
-          else
-            ClipRRect(
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(4),
-                bottomRight: Radius.circular(4),
-              ),
-              child: Image.asset(
-                'assets/images/no_image.png',
-                height: 180,
-                width: double.infinity,
-                fit: BoxFit.cover,
-              ),
-            ),
-
-          // 営業時間と住所
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
                 // 営業時間
                 Row(
                   children: [
@@ -204,7 +136,7 @@ class _SearchResultModalWidgetState extends State<SearchResultModalWidget> {
                       size: 16,
                       color: result.isOpenNow == true
                           ? Colors.green
-                          : const Color(0xFFE4002B),
+                          : AppTheme.primaryRed,
                     ),
                     const SizedBox(width: 8),
                     Text(
@@ -212,7 +144,7 @@ class _SearchResultModalWidgetState extends State<SearchResultModalWidget> {
                       style: TextStyle(
                         color: result.isOpenNow == true
                             ? Colors.green
-                            : const Color(0xFFE4002B),
+                            : AppTheme.primaryRed,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -221,27 +153,28 @@ class _SearchResultModalWidgetState extends State<SearchResultModalWidget> {
                       result.getOpeningHoursText(),
                       style: TextStyle(
                         color: result.isOpenNow == true
-                            ? const Color(0xFF1A1A1A)
-                            : const Color(0xFFE4002B),
+                            ? AppTheme.textPrimary
+                            : AppTheme.primaryRed,
                       ),
                     ),
                   ],
                 ),
-                // 住所
                 const SizedBox(height: 8),
+
+                // 住所
                 Row(
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.location_on,
                       size: 16,
-                      color: Color(0xFF00AEEF),
+                      color: AppTheme.primaryBlue,
                     ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         result.address,
                         style: const TextStyle(
-                          color: Color(0xFF1A1A1A),
+                          color: AppTheme.textPrimary,
                           fontSize: 14,
                         ),
                       ),
@@ -265,7 +198,7 @@ class _SearchResultModalWidgetState extends State<SearchResultModalWidget> {
                           color: Colors.white, fontWeight: FontWeight.bold)),
                   onPressed: () => _openInMaps(result),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF00AEEF),
+                    backgroundColor: AppTheme.primaryBlue,
                     foregroundColor: Colors.white,
                     elevation: 2,
                     padding: const EdgeInsets.symmetric(
@@ -278,12 +211,12 @@ class _SearchResultModalWidgetState extends State<SearchResultModalWidget> {
                 const SizedBox(width: 8),
                 if (result.website != null)
                   OutlinedButton.icon(
-                    icon: const Icon(Icons.language, color: Color(0xFF00AEEF)),
-                    label: const Text('ウェブサイト',
-                        style: TextStyle(color: Color(0xFF00AEEF))),
+                    icon: Icon(Icons.language, color: AppTheme.primaryBlue),
+                    label: Text('ウェブサイト',
+                        style: TextStyle(color: AppTheme.primaryBlue)),
                     onPressed: () => _launchUrl(result.website!),
                     style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Color(0xFF00AEEF)),
+                      side: BorderSide(color: AppTheme.primaryBlue),
                       padding: const EdgeInsets.symmetric(
                           horizontal: 12, vertical: 8),
                       shape: RoundedRectangleBorder(
@@ -293,12 +226,12 @@ class _SearchResultModalWidgetState extends State<SearchResultModalWidget> {
                   ),
                 const SizedBox(width: 8),
                 OutlinedButton.icon(
-                  icon: const Icon(Icons.share, color: Color(0xFF00AEEF)),
-                  label: const Text('共有',
-                      style: TextStyle(color: Color(0xFF00AEEF))),
+                  icon: Icon(Icons.share, color: AppTheme.primaryBlue),
+                  label:
+                      Text('共有', style: TextStyle(color: AppTheme.primaryBlue)),
                   onPressed: () => _sharePlace(result),
                   style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Color(0xFF00AEEF)),
+                    side: BorderSide(color: AppTheme.primaryBlue),
                     padding:
                         const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     shape: RoundedRectangleBorder(
@@ -309,12 +242,12 @@ class _SearchResultModalWidgetState extends State<SearchResultModalWidget> {
                 const SizedBox(width: 8),
                 if (result.phoneNumber != null)
                   OutlinedButton.icon(
-                    icon: const Icon(Icons.phone, color: Color(0xFF00AEEF)),
-                    label: const Text('電話',
-                        style: TextStyle(color: Color(0xFF00AEEF))),
+                    icon: Icon(Icons.phone, color: AppTheme.primaryBlue),
+                    label: Text('電話',
+                        style: TextStyle(color: AppTheme.primaryBlue)),
                     onPressed: () => _callPhone(result.phoneNumber!),
                     style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Color(0xFF00AEEF)),
+                      side: BorderSide(color: AppTheme.primaryBlue),
                       padding: const EdgeInsets.symmetric(
                           horizontal: 12, vertical: 8),
                       shape: RoundedRectangleBorder(

@@ -4,6 +4,7 @@ import '../../models/place_result.dart';
 import '../../services/places_service.dart';
 import '../../services/search_history_service.dart';
 import '../../models/search_history.dart';
+import '../../theme/app_theme.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class SearchDetailScreen extends StatefulWidget {
@@ -117,7 +118,7 @@ class _SearchDetailScreenState extends State<SearchDetailScreen> {
             child: Row(
               children: [
                 IconButton(
-                  icon: const Icon(Icons.arrow_back, color: Color(0xFF00AEEF)),
+                  icon: Icon(Icons.arrow_back, color: AppTheme.primaryBlue),
                   onPressed: () => Navigator.pop(context),
                 ),
                 Expanded(
@@ -141,14 +142,14 @@ class _SearchDetailScreenState extends State<SearchDetailScreen> {
                             vertical: 9, horizontal: 16),
                       ),
                       style: const TextStyle(
-                          color: Color(0xFF1A1A1A), fontSize: 16),
+                          color: AppTheme.textPrimary, fontSize: 16),
                       onChanged: _onSearchChanged,
                     ),
                   ),
                 ),
                 if (_searchController.text.isNotEmpty)
                   IconButton(
-                    icon: const Icon(Icons.clear, color: Color(0xFF00AEEF)),
+                    icon: Icon(Icons.clear, color: AppTheme.primaryBlue),
                     onPressed: () {
                       setState(() {
                         _searchController.clear();
@@ -166,9 +167,10 @@ class _SearchDetailScreenState extends State<SearchDetailScreen> {
       body: Column(
         children: [
           _isSearching
-              ? const LinearProgressIndicator(
+              ? LinearProgressIndicator(
                   backgroundColor: Colors.white,
-                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF00AEEF)),
+                  valueColor:
+                      AlwaysStoppedAnimation<Color>(AppTheme.primaryBlue),
                 )
               : const SizedBox(height: 2),
           Expanded(

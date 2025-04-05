@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../theme/app_theme.dart';
 
 class KaraokeChainSettingsScreen extends StatefulWidget {
   final Map<String, bool> initialSelectedChains;
@@ -45,7 +46,7 @@ class _KaraokeChainSettingsScreenState
               child: const Text('保存', style: TextStyle(color: Colors.white)),
             ),
         ],
-        backgroundColor: const Color(0xFF00AEEF),
+        backgroundColor: AppTheme.primaryBlue,
       ),
       body: Column(
         children: [
@@ -54,7 +55,7 @@ class _KaraokeChainSettingsScreenState
             child: Text(
               '※ 上から$_maxVisibleOnHome件までがホーム画面に表示されます',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: const Color(0xFF1A1A1A),
+                    color: AppTheme.textPrimary,
                   ),
             ),
           ),
@@ -91,14 +92,14 @@ class _KaraokeChainSettingsScreenState
                               vertical: 2,
                             ),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF00AEEF).withOpacity(0.2),
+                              color: AppTheme.primaryBlue.withOpacity(0.2),
                               borderRadius: BorderRadius.circular(4),
                             ),
-                            child: const Text(
+                            child: Text(
                               'ホーム表示',
                               style: TextStyle(
                                 fontSize: 12,
-                                color: Color(0xFF00AEEF),
+                                color: AppTheme.primaryBlue,
                               ),
                             ),
                           ),
@@ -107,7 +108,7 @@ class _KaraokeChainSettingsScreenState
                   ),
                   trailing: Checkbox(
                     value: chain.value,
-                    activeColor: const Color(0xFF00AEEF),
+                    activeColor: AppTheme.primaryBlue,
                     onChanged: (bool? value) {
                       if (value != null) {
                         setState(() {

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../screens/karaoke_chain_settings_screen.dart';
 import '../screens/search_detail_screen.dart';
 import '../../app_state.dart';
+import '../../theme/app_theme.dart';
 
 class SearchHeaderWidget extends StatefulWidget {
   final TextEditingController? searchController;
@@ -97,26 +98,29 @@ class _SearchHeaderWidgetState extends State<SearchHeaderWidget> {
                     decoration: InputDecoration(
                       hintText: 'カラオケ店を検索',
                       hintStyle: const TextStyle(
-                          color: Color(0xFF757575), fontSize: 14),
+                          color: AppTheme.textPrimary, fontSize: 14),
                       prefixIcon:
-                          const Icon(Icons.search, color: Color(0xFF00AEEF)),
+                          Icon(Icons.search, color: AppTheme.primaryBlue),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(
-                            color: Color(0xFF00AEEF), width: 2),
+                        borderSide: BorderSide.none,
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide:
+                            BorderSide(color: AppTheme.primaryBlue, width: 2),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(
-                            color: Color(0xFF00AEEF), width: 1),
+                        borderSide: BorderSide(color: AppTheme.divider),
                       ),
                       filled: true,
                       fillColor: Colors.white,
                       contentPadding: const EdgeInsets.symmetric(
                           vertical: 12, horizontal: 16),
                     ),
-                    style:
-                        const TextStyle(color: Color(0xFF1A1A1A), fontSize: 14),
+                    style: const TextStyle(
+                        color: AppTheme.textPrimary, fontSize: 14),
                     onSubmitted: (value) {
                       if (value.isNotEmpty) {
                         widget.onSearch?.call(value, _selectedRadius);
