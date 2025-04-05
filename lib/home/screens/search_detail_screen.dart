@@ -118,7 +118,8 @@ class _SearchDetailScreenState extends State<SearchDetailScreen> {
             child: Row(
               children: [
                 IconButton(
-                  icon: const Icon(Icons.arrow_back, color: AppTheme.primaryBlue),
+                  icon:
+                      const Icon(Icons.arrow_back, color: AppTheme.primaryBlue),
                   onPressed: () => Navigator.pop(context),
                 ),
                 Expanded(
@@ -213,20 +214,20 @@ class _SearchDetailScreenState extends State<SearchDetailScreen> {
                     height: 8,
                     color: const Color(0xFFF2F2F2),
                   ),
-                  if (_searchHistory.isNotEmpty) ...[
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            '履歴',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                              color: Color(0xFF1A1A1A),
-                            ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          '履歴',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: Color(0xFF1A1A1A),
                           ),
+                        ),
+                        if (_searchHistory.isNotEmpty)
                           TextButton(
                             onPressed: () async {
                               if (!mounted) return;
@@ -246,9 +247,44 @@ class _SearchDetailScreenState extends State<SearchDetailScreen> {
                                   fontSize: 13,
                                 )),
                           ),
-                        ],
+                      ],
+                    ),
+                  ),
+                  if (_searchHistory.isEmpty) ...[
+                    Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 20.0),
+                        child: Column(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: const BoxDecoration(
+                                color: Color(0xFFEEEEEE),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.history,
+                                color: Color(0xFF00AEEF),
+                                size: 32,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            const Text(
+                              '検索履歴がありません。',
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Color(0xFF666666),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
+                    Container(
+                      height: 1,
+                      color: Colors.grey[200],
+                    ),
+                  ] else ...[
                     ..._searchHistory
                         .where((history) =>
                             history.searchType == 'location' ||
