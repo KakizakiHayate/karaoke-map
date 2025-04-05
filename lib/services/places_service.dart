@@ -46,8 +46,10 @@ class PlacesService {
     LatLng? searchLocation,
     bool isStation = false,
     required Map<String, bool> selectedChains,
+    required int radius,
   }) async {
-    _logger.d('Search params - Query: $query, IsStation: $isStation');
+    _logger.d(
+        'Search params - Query: $query, IsStation: $isStation, Radius: $radius');
 
     final searchUrl = Uri.parse(
       '$_baseUrl/textsearch/json?query=カラオケ $query&language=ja&region=jp&key=$_apiKey',
@@ -79,17 +81,6 @@ class PlacesService {
       if (detailsResponse.statusCode == 200) {
         final detailsJson = jsonDecode(detailsResponse.body);
         if (detailsJson['status'] == 'OK') {
-          _logger.d('Place Details Response for ${place['name']}:');
-          _logger.d('Opening hours: ${detailsJson['result']['opening_hours']}');
-          _logger.d(
-              'Periods: ${detailsJson['result']['opening_hours']?['periods']}');
-          _logger.d(
-              'Open now: ${detailsJson['result']['opening_hours']?['open_now']}');
-          _logger.d(
-              'Weekday text: ${detailsJson['result']['opening_hours']?['weekday_text']}');
-          _logger
-              .d('Phone: ${detailsJson['result']['formatted_phone_number']}');
-          _logger.d('Website: ${detailsJson['result']['website']}');
           place.addAll(detailsJson['result']);
         }
       }
@@ -100,10 +91,11 @@ class PlacesService {
       );
 
       // 距離情報の設定
+      double? distance;
       if (query.contains('駅')) {
         // 駅検索の場合
         if (searchLocation != null) {
-          final distance = _calculateDistance(
+          distance = _calculateDistance(
             searchLocation.latitude,
             searchLocation.longitude,
             placeLocation.latitude,
@@ -116,7 +108,7 @@ class PlacesService {
         }
       } else if (query.isEmpty && userLocation != null) {
         // 現在地検索の場合
-        final distance = _calculateDistance(
+        distance = _calculateDistance(
           userLocation.latitude,
           userLocation.longitude,
           placeLocation.latitude,
@@ -132,17 +124,24 @@ class PlacesService {
         if (nearestStation != null) {
           // 最寄り駅情報と距離を設定
           place['nearest_station'] = nearestStation;
-          place['distance'] = nearestStation['distance'];
+          distance = nearestStation['distance'];
+          place['distance'] = distance;
           place['distance_type'] = 'nearest';
           _logger.d(
-              'Found nearest station: ${nearestStation['name']} - Distance: ${nearestStation['distance']}m');
+              'Found nearest station: ${nearestStation['name']} - Distance: ${distance}m');
         }
       }
 
-      return PlaceResult.fromJson(place);
+      // 指定された半径内かどうかをチェック
+      if (distance != null && distance <= radius) {
+        return PlaceResult.fromJson(place);
+      }
+      return null;
     });
 
-    return await Future.wait(futures);
+    // nullを除外して結果を返す
+    final results = await Future.wait(futures);
+    return results.whereType<PlaceResult>().toList();
   }
 
   Future<Map<String, dynamic>?> _findNearestStation(LatLng location) async {

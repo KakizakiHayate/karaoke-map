@@ -88,6 +88,9 @@ class _SearchDetailScreenState extends State<SearchDetailScreen> {
     final String text = suggestion.mainText;
     if (!mounted) return;
     _searchController.text = text;
+    final searchType = text.contains('駅') ? 'station' : 'location';
+    await _saveSearchHistory(text, searchType);
+    if (!mounted) return;
     Navigator.pop(context, text);
   }
 
@@ -119,9 +122,11 @@ class _SearchDetailScreenState extends State<SearchDetailScreen> {
           onChanged: _onSearchChanged,
           onSubmitted: (value) async {
             if (value.isNotEmpty) {
-              final navigator = Navigator.of(context);
               if (!mounted) return;
-              await _saveSearchHistory(value, 'location');
+              final navigator = Navigator.of(context);
+              final searchType = value.contains('駅') ? 'station' : 'location';
+              await _saveSearchHistory(value, searchType);
+              if (!mounted) return;
               navigator.pop(value);
             }
           },
@@ -152,7 +157,6 @@ class _SearchDetailScreenState extends State<SearchDetailScreen> {
                     onTap: () async {
                       final navigator = Navigator.of(context);
                       if (!mounted) return;
-                      await _saveSearchHistory('現在地', 'current_location');
                       navigator.pop('');
                     },
                   ),
@@ -179,32 +183,37 @@ class _SearchDetailScreenState extends State<SearchDetailScreen> {
                         ],
                       ),
                     ),
-                    ..._searchHistory.map(
-                      (history) => ListTile(
-                        leading: Icon(
-                          history.searchType == 'current_location'
-                              ? Icons.my_location
-                              : Icons.search,
-                          color: Colors.grey,
-                        ),
-                        title: Text(history.searchQuery),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.close),
-                          onPressed: () async {
-                            if (history.id != null) {
+                    ..._searchHistory
+                        .where((history) =>
+                            history.searchType == 'location' ||
+                            history.searchType == 'station')
+                        .map(
+                          (history) => ListTile(
+                            leading: Icon(
+                              history.searchType == 'station'
+                                  ? Icons.train
+                                  : Icons.search,
+                              color: Colors.grey,
+                            ),
+                            title: Text(history.searchQuery),
+                            trailing: IconButton(
+                              icon: const Icon(Icons.close),
+                              onPressed: () async {
+                                if (history.id != null) {
+                                  if (!mounted) return;
+                                  await _historyService
+                                      .deleteSearchHistory(history.id!);
+                                  await _loadSearchHistory();
+                                }
+                              },
+                            ),
+                            onTap: () {
+                              final navigator = Navigator.of(context);
                               if (!mounted) return;
-                              await _historyService
-                                  .deleteSearchHistory(history.id!);
-                              await _loadSearchHistory();
-                            }
-                          },
+                              navigator.pop(history.searchQuery);
+                            },
+                          ),
                         ),
-                        onTap: () {
-                          final navigator = Navigator.of(context);
-                          navigator.pop(history.searchQuery);
-                        },
-                      ),
-                    ),
                     const Divider(height: 1),
                   ],
                 ],

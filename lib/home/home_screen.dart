@@ -145,7 +145,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Future<void> _performSearch(String query) async {
+  Future<void> _performSearch(String query, String selectedRadius) async {
     setState(() => _searchResults = []); // 検索中は結果をクリア
 
     // 検索タイプを判断（駅名かエリア名か）
@@ -160,13 +160,14 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     }
 
-    // 検索実行時に選択されたチェーン店の情報を渡す
+    // 検索実行時に選択されたチェーン店の情報と距離を渡す
     final results = await PlacesService().searchKaraoke(
       query,
       userLocation: _userLocation,
       searchLocation: searchLocation,
       isStation: isStation,
-      selectedChains: _selectedChains, // 選択されたチェーン店を追加
+      selectedChains: _selectedChains,
+      radius: int.parse(selectedRadius),
     );
 
     // マーカーを更新
@@ -259,11 +260,10 @@ class _HomeScreenState extends State<HomeScreen> {
               selectedChains: _selectedChains,
               onChainsUpdated: (newChains) async {
                 await _saveSelectedChains(newChains);
-
                 // 強制的に現在の検索を再実行
                 final currentQuery = _searchController.text;
                 if (currentQuery.isNotEmpty) {
-                  await _performSearch(currentQuery);
+                  await _performSearch(currentQuery, '500');
                 }
               },
             ),

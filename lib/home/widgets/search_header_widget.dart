@@ -6,7 +6,7 @@ import '../../app_state.dart';
 
 class SearchHeaderWidget extends StatefulWidget {
   final TextEditingController? searchController;
-  final Function(String)? onSearch;
+  final Function(String, String)? onSearch;
   final Map<String, bool> selectedChains;
   final Function(Map<String, bool>) onChainsUpdated;
 
@@ -91,7 +91,7 @@ class _SearchHeaderWidgetState extends State<SearchHeaderWidget> {
                         setState(() {
                           _searchController.text = result;
                         });
-                        widget.onSearch?.call(result);
+                        widget.onSearch?.call(result, _selectedRadius);
                       }
                     },
                     decoration: InputDecoration(
@@ -103,6 +103,11 @@ class _SearchHeaderWidgetState extends State<SearchHeaderWidget> {
                       filled: true,
                       fillColor: Colors.grey[200],
                     ),
+                    onSubmitted: (value) {
+                      if (value.isNotEmpty) {
+                        widget.onSearch?.call(value, _selectedRadius);
+                      }
+                    },
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -126,6 +131,10 @@ class _SearchHeaderWidgetState extends State<SearchHeaderWidget> {
                         setState(() {
                           _selectedRadius = newValue;
                         });
+                        if (_searchController.text.isNotEmpty) {
+                          widget.onSearch
+                              ?.call(_searchController.text, newValue);
+                        }
                       }
                     },
                   ),
@@ -171,7 +180,8 @@ class _SearchHeaderWidgetState extends State<SearchHeaderWidget> {
                     if (result != null) {
                       widget.onChainsUpdated(result);
                       if (_searchController.text.isNotEmpty) {
-                        widget.onSearch?.call(_searchController.text);
+                        widget.onSearch
+                            ?.call(_searchController.text, _selectedRadius);
                       }
                     }
                   },
