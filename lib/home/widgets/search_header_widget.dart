@@ -98,21 +98,24 @@ class _SearchHeaderWidgetState extends State<SearchHeaderWidget> {
                     decoration: InputDecoration(
                       hintText: 'カラオケ店を検索',
                       hintStyle: const TextStyle(
-                          color: AppTheme.textPrimary, fontSize: 14),
+                          color: Color.fromARGB(255, 100, 100, 100), fontSize: 14),
                       prefixIcon:
-                          Icon(Icons.search, color: AppTheme.primaryBlue),
+                          const Icon(Icons.search, color: AppTheme.primaryBlue),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide.none,
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide:
-                            BorderSide(color: AppTheme.primaryBlue, width: 2),
+                        borderSide: const BorderSide(color: AppTheme.primaryBlue, width: 1),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(color: AppTheme.divider),
+                        borderSide: const BorderSide(color: AppTheme.primaryBlue, width: 1),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: AppTheme.primaryBlue, width: 1),
+                      ),
+                      disabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: AppTheme.primaryBlue, width: 1),
                       ),
                       filled: true,
                       fillColor: Colors.white,

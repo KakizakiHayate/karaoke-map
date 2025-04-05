@@ -23,9 +23,7 @@ class AppTheme {
     onPrimary: Colors.white,
     onSecondary: textPrimary,
     onError: Colors.white,
-    background: background,
     surface: background,
-    onBackground: textPrimary,
     onSurface: textPrimary,
   );
 

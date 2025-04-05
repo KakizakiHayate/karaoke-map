@@ -118,7 +118,7 @@ class _SearchDetailScreenState extends State<SearchDetailScreen> {
             child: Row(
               children: [
                 IconButton(
-                  icon: Icon(Icons.arrow_back, color: AppTheme.primaryBlue),
+                  icon: const Icon(Icons.arrow_back, color: AppTheme.primaryBlue),
                   onPressed: () => Navigator.pop(context),
                 ),
                 Expanded(
@@ -149,7 +149,7 @@ class _SearchDetailScreenState extends State<SearchDetailScreen> {
                 ),
                 if (_searchController.text.isNotEmpty)
                   IconButton(
-                    icon: Icon(Icons.clear, color: AppTheme.primaryBlue),
+                    icon: const Icon(Icons.clear, color: AppTheme.primaryBlue),
                     onPressed: () {
                       setState(() {
                         _searchController.clear();
@@ -167,7 +167,7 @@ class _SearchDetailScreenState extends State<SearchDetailScreen> {
       body: Column(
         children: [
           _isSearching
-              ? LinearProgressIndicator(
+              ? const LinearProgressIndicator(
                   backgroundColor: Colors.white,
                   valueColor:
                       AlwaysStoppedAnimation<Color>(AppTheme.primaryBlue),

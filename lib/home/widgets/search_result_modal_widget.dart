@@ -164,7 +164,7 @@ class _SearchResultModalWidgetState extends State<SearchResultModalWidget> {
                 // 住所
                 Row(
                   children: [
-                    Icon(
+                    const Icon(
                       Icons.location_on,
                       size: 16,
                       color: AppTheme.primaryBlue,
@@ -211,12 +211,12 @@ class _SearchResultModalWidgetState extends State<SearchResultModalWidget> {
                 const SizedBox(width: 8),
                 if (result.website != null)
                   OutlinedButton.icon(
-                    icon: Icon(Icons.language, color: AppTheme.primaryBlue),
-                    label: Text('ウェブサイト',
+                    icon: const Icon(Icons.language, color: AppTheme.primaryBlue),
+                    label: const Text('ウェブサイト',
                         style: TextStyle(color: AppTheme.primaryBlue)),
                     onPressed: () => _launchUrl(result.website!),
                     style: OutlinedButton.styleFrom(
-                      side: BorderSide(color: AppTheme.primaryBlue),
+                      side: const BorderSide(color: AppTheme.primaryBlue),
                       padding: const EdgeInsets.symmetric(
                           horizontal: 12, vertical: 8),
                       shape: RoundedRectangleBorder(
@@ -226,12 +226,12 @@ class _SearchResultModalWidgetState extends State<SearchResultModalWidget> {
                   ),
                 const SizedBox(width: 8),
                 OutlinedButton.icon(
-                  icon: Icon(Icons.share, color: AppTheme.primaryBlue),
+                  icon: const Icon(Icons.share, color: AppTheme.primaryBlue),
                   label:
-                      Text('共有', style: TextStyle(color: AppTheme.primaryBlue)),
+                      const Text('共有', style: TextStyle(color: AppTheme.primaryBlue)),
                   onPressed: () => _sharePlace(result),
                   style: OutlinedButton.styleFrom(
-                    side: BorderSide(color: AppTheme.primaryBlue),
+                    side: const BorderSide(color: AppTheme.primaryBlue),
                     padding:
                         const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     shape: RoundedRectangleBorder(
@@ -242,12 +242,12 @@ class _SearchResultModalWidgetState extends State<SearchResultModalWidget> {
                 const SizedBox(width: 8),
                 if (result.phoneNumber != null)
                   OutlinedButton.icon(
-                    icon: Icon(Icons.phone, color: AppTheme.primaryBlue),
-                    label: Text('電話',
+                    icon: const Icon(Icons.phone, color: AppTheme.primaryBlue),
+                    label: const Text('電話',
                         style: TextStyle(color: AppTheme.primaryBlue)),
                     onPressed: () => _callPhone(result.phoneNumber!),
                     style: OutlinedButton.styleFrom(
-                      side: BorderSide(color: AppTheme.primaryBlue),
+                      side: const BorderSide(color: AppTheme.primaryBlue),
                       padding: const EdgeInsets.symmetric(
                           horizontal: 12, vertical: 8),
                       shape: RoundedRectangleBorder(

@@ -95,7 +95,7 @@ class _KaraokeChainSettingsScreenState
                               color: AppTheme.primaryBlue.withOpacity(0.2),
                               borderRadius: BorderRadius.circular(4),
                             ),
-                            child: Text(
+                            child: const Text(
                               'ホーム表示',
                               style: TextStyle(
                                 fontSize: 12,
