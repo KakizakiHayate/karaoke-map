@@ -38,6 +38,9 @@ class _HomeScreenState extends State<HomeScreen> {
   final Set<Marker> _markers = {};
   GoogleMapController? _mapController;
 
+  // 検索中の状態を追加
+  bool _isLoading = false;
+
   // 表示する画面のリスト
   final List<Widget> _screens = [
     const SearchScreen(),
@@ -65,43 +68,125 @@ class _HomeScreenState extends State<HomeScreen> {
   // 選択されたカラオケチェーン店の状態を追加
   Map<String, bool> _selectedChains = {};
 
+  // 現在選択されている検索範囲
+  String _currentRadius = '500';
+
   @override
   void initState() {
     super.initState();
-    _getCurrentLocation();
     _loadKaraokeIcon();
     _loadSelectedChains(); // チェーン店の選択状態を読み込む
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _updateMaxModalSize();
     });
+
+    // 現在位置を取得して自動検索を実行
+    _initializeLocationAndSearch();
   }
 
-  // チェーン店の選択状態を読み込むメソッドを追加
-  Future<void> _loadSelectedChains() async {
-    final chains = await _karaokeChainService.getAllChains();
-    final selectedChains =
-        await _karaokeChainService.getSelectedChains(1); // 仮のユーザーID: 1
+  // 初期化時に位置情報を取得して自動検索を行うメソッドを追加
+  Future<void> _initializeLocationAndSearch() async {
+    try {
+      await _getCurrentLocation();
+
+      // 現在位置が取得できた場合
+      if (_userLocation != null) {
+        // 現在位置から検索範囲内を検索（デフォルトは500m）
+        await _performSearchNearby(
+            _userLocation!, int.parse(_getInitialRadius()));
+      } else {
+        // 位置情報が取得できない場合は東京都内を検索
+        await _performSearchInTokyo();
+      }
+    } catch (e) {
+      _logger.e('自動検索でエラーが発生しました: $e');
+      // エラー時も東京都内を検索
+      await _performSearchInTokyo();
+    }
+  }
+
+  // 初期検索用の範囲を取得
+  String _getInitialRadius() {
+    return '500'; // 初期検索時のデフォルト範囲
+  }
+
+  // 特定の位置から指定した半径内を検索するメソッド
+  Future<void> _performSearchNearby(LatLng location, int radius) async {
+    // 検索開始時にローディング状態をtrueに設定
+    setState(() {
+      _isLoading = true;
+    });
+
+    final results = await PlacesService().searchKaraoke(
+      '', // クエリは空で位置情報だけで検索
+      userLocation: location,
+      searchLocation: location,
+      isStation: false,
+      selectedChains: _selectedChains,
+      radius: radius,
+    );
+
+    // マーカーを更新
+    final markers = results.map((place) {
+      return Marker(
+        markerId: MarkerId(place.placeId),
+        position: LatLng(place.lat, place.lng),
+        icon: _karaokeIcon ?? BitmapDescriptor.defaultMarker,
+        onTap: () => _onMarkerTapped(place),
+      );
+    }).toSet();
 
     setState(() {
-      _selectedChains = {
-        for (var chain in chains)
-          chain.name: selectedChains.any((selected) => selected.id == chain.id)
-      };
+      _searchResults = results;
+      _markers.clear();
+      _markers.addAll(markers);
+      _isLoading = false; // 検索完了時にローディング状態をfalseに設定
     });
+
+    // 検索結果がある場合、マップの表示位置を調整
+    if (results.isNotEmpty && _mapController != null) {
+      final bounds = _calculateBounds(results);
+      _mapController!.animateCamera(
+        CameraUpdate.newLatLngBounds(bounds, 50.0),
+      );
+    }
   }
 
-  // チェーン店の選択状態を保存するメソッドを追加
-  Future<void> _saveSelectedChains(Map<String, bool> newChains) async {
-    final chains = await _karaokeChainService.getAllChains();
+  // 東京都内のカラオケ店を検索するメソッド
+  Future<void> _performSearchInTokyo() async {
+    // 東京都内という検索ワードでカラオケ店を検索
+    await _performSearch('東京都', _getRadius());
+  }
 
-    for (var chain in chains) {
-      final isSelected = newChains[chain.name] ?? false;
-      await _karaokeChainService.updateChainSelection(1, chain.id!, isSelected);
+  // 現在選択されている検索範囲を取得するヘルパーメソッド
+  String _getRadius() {
+    return _currentRadius; // SearchHeaderWidgetから選択された値を使用
+  }
+
+  Future<void> _getCurrentLocation() async {
+    // 位置情報の権限を確認
+    final permission = await Geolocator.checkPermission();
+
+    // 権限が拒否または永久に拒否されている場合
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) {
+      // 位置情報が利用できない場合はnullのままにする（後で東京都検索に使用）
+      _logger.i('位置情報の権限がありません。東京都で検索を行います。');
+      return; // ここで終了
     }
 
-    setState(() {
-      _selectedChains = newChains;
-    });
+    // 権限がある場合だけ位置情報取得を試みる
+    try {
+      final position = await Geolocator.getCurrentPosition(
+        timeLimit: const Duration(seconds: 10), // タイムアウトを10秒に設定
+      );
+      setState(() {
+        _userLocation = LatLng(position.latitude, position.longitude);
+      });
+    } catch (e) {
+      _logger.e('位置情報の取得に失敗しました: $e');
+      // 位置情報取得エラー時は_userLocationはnullのまま
+    }
   }
 
   void _updateMaxModalSize() {
@@ -122,31 +207,54 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  Future<void> _getCurrentLocation() async {
-    // 位置情報の権限を確認・取得
-    final permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      await Geolocator.requestPermission();
-    }
-
-    try {
-      final position = await Geolocator.getCurrentPosition();
-      setState(() {
-        _userLocation = LatLng(position.latitude, position.longitude);
-      });
-    } catch (e) {
-      _logger.e('Error getting location: $e');
-    }
-  }
-
   Future<void> _loadKaraokeIcon() async {
     _karaokeIcon = BitmapDescriptor.defaultMarkerWithHue(
       BitmapDescriptor.hueRed,
     );
   }
 
+  Future<void> _loadSelectedChains() async {
+    final chains = await _karaokeChainService.getAllChains();
+    final selectedChains =
+        await _karaokeChainService.getSelectedChains(1); // 仮のユーザーID: 1
+
+    setState(() {
+      _selectedChains = {
+        for (var chain in chains)
+          chain.name: selectedChains.any((selected) => selected.id == chain.id)
+      };
+    });
+  }
+
+  Future<void> _saveSelectedChains(Map<String, bool> newChains) async {
+    final chains = await _karaokeChainService.getAllChains();
+
+    for (var chain in chains) {
+      final isSelected = newChains[chain.name] ?? false;
+      await _karaokeChainService.updateChainSelection(1, chain.id!, isSelected);
+    }
+
+    setState(() {
+      _selectedChains = newChains;
+    });
+  }
+
   Future<void> _performSearch(String query, String selectedRadius) async {
-    setState(() => _searchResults = []); // 検索中は結果をクリア
+    // 検索開始時にローディング状態をtrueに設定
+    setState(() {
+      _searchResults = []; // 検索中は結果をクリア
+      _isLoading = true;
+    });
+
+    // 検索クエリが空の場合は現在位置から検索
+    if (query.isEmpty && _userLocation != null) {
+      await _performSearchNearby(_userLocation!, int.parse(selectedRadius));
+      return;
+    } else if (query.isEmpty) {
+      // 検索クエリが空かつ現在位置もない場合は東京都で検索
+      await _performSearchInTokyo();
+      return;
+    }
 
     // 検索タイプを判断（駅名かエリア名か）
     final isStation = query.contains('駅');
@@ -184,6 +292,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _searchResults = results;
       _markers.clear();
       _markers.addAll(markers);
+      _isLoading = false; // 検索完了時にローディング状態をfalseに設定
     });
 
     // 検索結果がある場合、マップの表示位置を調整
@@ -258,13 +367,18 @@ class _HomeScreenState extends State<HomeScreen> {
               searchController: _searchController,
               onSearch: _performSearch,
               selectedChains: _selectedChains,
+              initialRadius: _currentRadius,
+              onRadiusChanged: (radius) {
+                setState(() {
+                  _currentRadius = radius;
+                });
+              },
               onChainsUpdated: (newChains) async {
                 await _saveSelectedChains(newChains);
                 // 強制的に現在の検索を再実行
                 final currentQuery = _searchController.text;
-                if (currentQuery.isNotEmpty) {
-                  await _performSearch(currentQuery, '500');
-                }
+                // クエリがなくても現在位置から検索できるようにする
+                await _performSearch(currentQuery, _getRadius());
               },
             ),
             if (_selectedPlace != null)
@@ -292,6 +406,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: SearchResultModalWidget(
                     scrollController: scrollController,
                     searchResults: _searchResults,
+                    isLoading: _isLoading,
                   ),
                 );
               },
