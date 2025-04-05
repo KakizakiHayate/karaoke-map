@@ -31,10 +31,10 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primaryColor: const Color(0xFF00AEEF),
         primarySwatch: _createMaterialColor(const Color(0xFF00AEEF)),
-        colorScheme: ColorScheme.light(
-          primary: const Color(0xFF00AEEF),
-          secondary: const Color(0xFFE0E0E0),
-          error: const Color(0xFFE4002B),
+        colorScheme: const ColorScheme.light(
+          primary: Color(0xFF00AEEF),
+          secondary: Color(0xFFE0E0E0),
+          error: Color(0xFFE4002B),
         ),
         textTheme: const TextTheme(
           titleLarge: TextStyle(

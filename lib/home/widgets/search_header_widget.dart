@@ -213,29 +213,27 @@ class _SearchHeaderWidgetState extends State<SearchHeaderWidget> {
                     ),
                   ),
                 ),
-                Container(
-                  child: IconButton(
-                    onPressed: () async {
-                      final result = await Navigator.push<Map<String, bool>>(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => KaraokeChainSettingsScreen(
-                            initialSelectedChains: widget.selectedChains,
-                          ),
+                IconButton(
+                  onPressed: () async {
+                    final result = await Navigator.push<Map<String, bool>>(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => KaraokeChainSettingsScreen(
+                          initialSelectedChains: widget.selectedChains,
                         ),
-                      );
+                      ),
+                    );
 
-                      if (result != null) {
-                        widget.onChainsUpdated(result);
-                        if (_searchController.text.isNotEmpty) {
-                          widget.onSearch
-                              ?.call(_searchController.text, _selectedRadius);
-                        }
+                    if (result != null) {
+                      widget.onChainsUpdated(result);
+                      if (_searchController.text.isNotEmpty) {
+                        widget.onSearch
+                            ?.call(_searchController.text, _selectedRadius);
                       }
-                    },
-                    icon: const Icon(Icons.tune,
-                        size: 18, color: Color(0xFF1A1A1A)),
-                  ),
+                    }
+                  },
+                  icon: const Icon(Icons.tune,
+                      size: 18, color: Color(0xFF1A1A1A)),
                 ),
               ],
             ),

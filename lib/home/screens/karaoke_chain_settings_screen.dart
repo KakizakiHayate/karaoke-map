@@ -39,10 +39,10 @@ class _KaraokeChainSettingsScreenState
                     Map.fromEntries(_chainSettings);
                 Navigator.pop(context, result);
               },
-              child: const Text('保存', style: TextStyle(color: Colors.white)),
               style: TextButton.styleFrom(
                 foregroundColor: Colors.white,
               ),
+              child: const Text('保存', style: TextStyle(color: Colors.white)),
             ),
         ],
         backgroundColor: const Color(0xFF00AEEF),
