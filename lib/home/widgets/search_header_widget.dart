@@ -10,6 +10,8 @@ class SearchHeaderWidget extends StatefulWidget {
   final Function(String, String)? onSearch;
   final Map<String, bool> selectedChains;
   final Function(Map<String, bool>) onChainsUpdated;
+  final String? initialRadius;
+  final Function(String)? onRadiusChanged;
 
   const SearchHeaderWidget({
     super.key,
@@ -17,6 +19,8 @@ class SearchHeaderWidget extends StatefulWidget {
     this.onSearch,
     required this.selectedChains,
     required this.onChainsUpdated,
+    this.initialRadius,
+    this.onRadiusChanged,
   });
 
   @override
@@ -25,8 +29,21 @@ class SearchHeaderWidget extends StatefulWidget {
 
 class _SearchHeaderWidgetState extends State<SearchHeaderWidget> {
   late final TextEditingController _searchController;
-  String _selectedRadius = '500';
-  final List<String> _radiusOptions = ['300', '500', '1000', '2000'];
+  late String _selectedRadius;
+  final List<String> _radiusOptions = [
+    '300',
+    '500',
+    '1000',
+    '2000',
+    '3000',
+    '4000',
+    '5000',
+    '6000',
+    '7000',
+    '8000',
+    '9000',
+    '10000'
+  ];
 
   static const int _maxVisibleChains = 5;
 
@@ -34,6 +51,7 @@ class _SearchHeaderWidgetState extends State<SearchHeaderWidget> {
   void initState() {
     super.initState();
     _searchController = widget.searchController ?? TextEditingController();
+    _selectedRadius = widget.initialRadius ?? '500';
   }
 
   @override
@@ -98,24 +116,29 @@ class _SearchHeaderWidgetState extends State<SearchHeaderWidget> {
                     decoration: InputDecoration(
                       hintText: 'カラオケ店を検索',
                       hintStyle: const TextStyle(
-                          color: Color.fromARGB(255, 100, 100, 100), fontSize: 14),
+                          color: Color.fromARGB(255, 100, 100, 100),
+                          fontSize: 14),
                       prefixIcon:
                           const Icon(Icons.search, color: AppTheme.primaryBlue),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: AppTheme.primaryBlue, width: 1),
+                        borderSide: const BorderSide(
+                            color: AppTheme.primaryBlue, width: 1),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: AppTheme.primaryBlue, width: 1),
+                        borderSide: const BorderSide(
+                            color: AppTheme.primaryBlue, width: 1),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: AppTheme.primaryBlue, width: 1),
+                        borderSide: const BorderSide(
+                            color: AppTheme.primaryBlue, width: 1),
                       ),
                       disabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: AppTheme.primaryBlue, width: 1),
+                        borderSide: const BorderSide(
+                            color: AppTheme.primaryBlue, width: 1),
                       ),
                       filled: true,
                       fillColor: Colors.white,
@@ -146,11 +169,19 @@ class _SearchHeaderWidgetState extends State<SearchHeaderWidget> {
                     dropdownColor: Colors.white,
                     borderRadius: BorderRadius.circular(8),
                     padding: const EdgeInsets.symmetric(horizontal: 8),
+                    isExpanded: false,
+                    menuMaxHeight: 300,
                     items: _radiusOptions.map((String value) {
+                      // 1000m以上はkmで表示
+                      final int intValue = int.parse(value);
+                      final String displayText = intValue >= 1000
+                          ? '${(intValue / 1000).toStringAsFixed(1)}km'
+                          : '${value}m';
+
                       return DropdownMenuItem<String>(
                         value: value,
                         child: Text(
-                          '${value}m',
+                          displayText,
                           style: const TextStyle(
                             color: Color(0xFF1A1A1A),
                             fontWeight: FontWeight.w500,
@@ -163,10 +194,13 @@ class _SearchHeaderWidgetState extends State<SearchHeaderWidget> {
                         setState(() {
                           _selectedRadius = newValue;
                         });
-                        if (_searchController.text.isNotEmpty) {
-                          widget.onSearch
-                              ?.call(_searchController.text, newValue);
-                        }
+
+                        // 検索範囲変更を親ウィジェットに通知
+                        widget.onRadiusChanged?.call(newValue);
+
+                        // 検索ボックスが空の場合でも、範囲変更時に再検索を実行
+                        // これにより現在位置からの検索も範囲が変わったら再実行される
+                        widget.onSearch?.call(_searchController.text, newValue);
                       }
                     },
                   ),

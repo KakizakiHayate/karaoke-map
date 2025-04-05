@@ -8,11 +8,15 @@ import '../../theme/app_theme.dart';
 class SearchResultModalWidget extends StatefulWidget {
   final ScrollController scrollController;
   final List<PlaceResult> searchResults;
+  final bool isLoading;
+  final String searchRadius;
 
   const SearchResultModalWidget({
     super.key,
     required this.scrollController,
     required this.searchResults,
+    required this.isLoading,
+    required this.searchRadius,
   });
 
   @override
@@ -40,23 +44,70 @@ class _SearchResultModalWidgetState extends State<SearchResultModalWidget> {
               borderRadius: BorderRadius.circular(2),
             ),
           ),
-          // 検索中のインジケータまたは検索結果
+          // 検索中のインジケータ、検索結果なし、または検索結果リスト
           Expanded(
-            child: widget.searchResults.isEmpty
-                ? const Center(
-                    child: CircularProgressIndicator(),
-                  )
-                : ListView.builder(
-                    controller: widget.scrollController,
-                    itemCount: widget.searchResults.length,
-                    itemBuilder: (context, index) {
-                      final result = widget.searchResults[index];
-                      return _buildResultCard(context, result);
-                    },
-                  ),
+            child: _buildContentBasedOnState(),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildContentBasedOnState() {
+    // ローディング中
+    if (widget.isLoading) {
+      return const Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text('検索中...', style: TextStyle(color: AppTheme.textPrimary)),
+          ],
+        ),
+      );
+    }
+
+    // 検索結果がない場合
+    if (widget.searchResults.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.search_off, size: 48, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            const Text(
+              '検索結果がありません',
+              style: TextStyle(
+                color: AppTheme.textPrimary,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '${widget.searchRadius}m範囲内にはカラオケチェーン店がありません',
+              style: TextStyle(color: Colors.grey[600]),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '別の場所や検索条件をお試しください',
+              style: TextStyle(color: Colors.grey[600]),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // 検索結果がある場合
+    return ListView.builder(
+      controller: widget.scrollController,
+      itemCount: widget.searchResults.length,
+      itemBuilder: (context, index) {
+        final result = widget.searchResults[index];
+        return _buildResultCard(context, result);
+      },
     );
   }
 
@@ -181,6 +232,30 @@ class _SearchResultModalWidgetState extends State<SearchResultModalWidget> {
                     ),
                   ],
                 ),
+
+                // 距離情報を追加（駅からの距離など）
+                if (result.distance != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8.0),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.directions_walk,
+                          size: 16,
+                          color: AppTheme.primaryBlue,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          result.getDistanceText(),
+                          style: const TextStyle(
+                            color: AppTheme.textPrimary,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
               ],
             ),
           ),
@@ -211,7 +286,8 @@ class _SearchResultModalWidgetState extends State<SearchResultModalWidget> {
                 const SizedBox(width: 8),
                 if (result.website != null)
                   OutlinedButton.icon(
-                    icon: const Icon(Icons.language, color: AppTheme.primaryBlue),
+                    icon:
+                        const Icon(Icons.language, color: AppTheme.primaryBlue),
                     label: const Text('ウェブサイト',
                         style: TextStyle(color: AppTheme.primaryBlue)),
                     onPressed: () => _launchUrl(result.website!),
@@ -227,8 +303,8 @@ class _SearchResultModalWidgetState extends State<SearchResultModalWidget> {
                 const SizedBox(width: 8),
                 OutlinedButton.icon(
                   icon: const Icon(Icons.share, color: AppTheme.primaryBlue),
-                  label:
-                      const Text('共有', style: TextStyle(color: AppTheme.primaryBlue)),
+                  label: const Text('共有',
+                      style: TextStyle(color: AppTheme.primaryBlue)),
                   onPressed: () => _sharePlace(result),
                   style: OutlinedButton.styleFrom(
                     side: const BorderSide(color: AppTheme.primaryBlue),

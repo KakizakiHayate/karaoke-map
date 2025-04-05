@@ -51,24 +51,93 @@ class PlacesService {
     _logger.d(
         'Search params - Query: $query, IsStation: $isStation, Radius: $radius');
 
-    final searchUrl = Uri.parse(
-      '$_baseUrl/textsearch/json?query=カラオケ $query&language=ja&region=jp&key=$_apiKey',
-    );
+    // 検索タイプによってURLを変更
+    Uri searchUrl;
+    String searchType = 'text'; // デフォルトはテキスト検索
+
+    // 現在地から検索（クエリが空）かつ位置情報がある場合は、nearbySearchを使用
+    if (query.isEmpty && userLocation != null) {
+      searchUrl = Uri.parse(
+        '$_baseUrl/nearbysearch/json?'
+        'location=${userLocation.latitude},${userLocation.longitude}'
+        '&radius=$radius'
+        '&type=establishment'
+        '&keyword=カラオケ'
+        '&language=ja'
+        '&key=$_apiKey',
+      );
+      searchType = 'nearby';
+      _logger.d('Using Nearby Search: $searchUrl');
+    } else {
+      // テキスト検索を使用
+      searchUrl = Uri.parse(
+        '$_baseUrl/textsearch/json?query=カラオケ $query&language=ja&region=jp&key=$_apiKey',
+      );
+      _logger.d('Using Text Search: $searchUrl');
+    }
 
     final searchResponse = await http.get(searchUrl);
-    if (searchResponse.statusCode != 200) return [];
+    if (searchResponse.statusCode != 200) {
+      _logger.e(
+          'API Error: ${searchResponse.statusCode} - ${searchResponse.body}');
+      return [];
+    }
 
     final searchJson = jsonDecode(searchResponse.body);
-    if (searchJson['status'] != 'OK') return [];
+
+    // 近隣検索がZERO_RESULTSを返した場合、テキスト検索にフォールバック
+    if (searchType == 'nearby' &&
+        searchJson['status'] == 'ZERO_RESULTS' &&
+        userLocation != null) {
+      _logger.w(
+          'Nearby search returned ZERO_RESULTS, falling back to text search');
+
+      // テキスト検索で「カラオケ」を検索
+      final fallbackUrl = Uri.parse(
+        '$_baseUrl/textsearch/json?query=カラオケ&location=${userLocation.latitude},${userLocation.longitude}'
+        '&radius=$radius&language=ja&region=jp&key=$_apiKey',
+      );
+
+      _logger.d('Using fallback Text Search: $fallbackUrl');
+      final fallbackResponse = await http.get(fallbackUrl);
+
+      if (fallbackResponse.statusCode == 200) {
+        final fallbackJson = jsonDecode(fallbackResponse.body);
+        if (fallbackJson['status'] == 'OK') {
+          searchJson.clear();
+          searchJson.addAll(fallbackJson);
+        } else {
+          _logger.e(
+              'Fallback search also failed: ${fallbackJson['status']} - ${fallbackJson['error_message'] ?? "Unknown error"}');
+        }
+      }
+    }
+
+    if (searchJson['status'] != 'OK') {
+      _logger.e(
+          'API Status Error: ${searchJson['status']} - ${searchJson['error_message'] ?? "Unknown error"}');
+      return [];
+    }
+
+    _logger.d(
+        'Total results before filtering: ${(searchJson['results'] as List).length}');
 
     // 検索結果をフィルタリング
     final filteredResults = (searchJson['results'] as List).where((place) {
       final placeName = place['name'] as String;
+
+      // 選択されたチェーン店が空の場合はすべて表示
+      if (selectedChains.isEmpty || selectedChains.values.every((v) => !v)) {
+        return true;
+      }
+
       // 選択されたチェーン店に含まれているかチェック
       return selectedChains.entries
           .where((entry) => entry.value) // trueのものだけ
           .any((entry) => placeName.contains(entry.key));
     }).toList();
+
+    _logger.d('Results after chain filtering: ${filteredResults.length}');
 
     // フィルタリングされた結果に対して詳細情報を取得
     final futures = filteredResults.map((place) async {
@@ -132,6 +201,10 @@ class PlacesService {
         }
       }
 
+      // 距離情報をログに出力（デバッグ用）
+      _logger
+          .d('Place: ${place['name']}, Distance: $distance, Radius: $radius');
+
       // 指定された半径内かどうかをチェック
       if (distance != null && distance <= radius) {
         return PlaceResult.fromJson(place);
@@ -141,7 +214,12 @@ class PlacesService {
 
     // nullを除外して結果を返す
     final results = await Future.wait(futures);
-    return results.whereType<PlaceResult>().toList();
+    final finalResults = results.whereType<PlaceResult>().toList();
+
+    _logger
+        .d('Final results count (within ${radius}m): ${finalResults.length}');
+
+    return finalResults;
   }
 
   Future<Map<String, dynamic>?> _findNearestStation(LatLng location) async {
