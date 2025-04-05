@@ -94,6 +94,11 @@ class _HomeScreenState extends State<HomeScreen> {
         // 現在位置から検索範囲内を検索（デフォルトは500m）
         await _performSearchNearby(
             _userLocation!, int.parse(_getInitialRadius()));
+
+        // 地図の表示位置を現在地に設定
+        _mapController?.animateCamera(
+          CameraUpdate.newLatLngZoom(_userLocation!, _kMapZoomLevel),
+        );
       } else {
         // 位置情報が取得できない場合は東京都内を検索
         await _performSearchInTokyo();
@@ -154,8 +159,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // 東京都内のカラオケ店を検索するメソッド
   Future<void> _performSearchInTokyo() async {
-    // 東京都内という検索ワードでカラオケ店を検索
-    await _performSearch('東京都', _getRadius());
+    // 東京駅の座標を使って検索するように変更
+    await _performSearchNearby(_kTokyoStationLocation, int.parse(_getRadius()));
   }
 
   // 現在選択されている検索範囲を取得するヘルパーメソッド
@@ -358,7 +363,15 @@ class _HomeScreenState extends State<HomeScreen> {
           if (_selectedIndex == 0) ...[
             MapWidget(
               markers: _markers,
-              onMapCreated: (controller) => _mapController = controller,
+              onMapCreated: (controller) {
+                _mapController = controller;
+                // マップが作成された時点で現在地が取得できていれば、そこにカメラを移動
+                if (_userLocation != null) {
+                  _mapController?.animateCamera(
+                    CameraUpdate.newLatLngZoom(_userLocation!, _kMapZoomLevel),
+                  );
+                }
+              },
               initialLocation: _userLocation ?? _kTokyoStationLocation,
               initialZoom: _kMapZoomLevel,
             ),
@@ -407,6 +420,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     scrollController: scrollController,
                     searchResults: _searchResults,
                     isLoading: _isLoading,
+                    searchRadius: _currentRadius,
                   ),
                 );
               },

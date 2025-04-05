@@ -26,6 +26,7 @@ class MapWidget extends StatelessWidget {
       onMapCreated: onMapCreated,
       myLocationEnabled: true,
       myLocationButtonEnabled: true,
+      zoomControlsEnabled: true,
     );
   }
 }

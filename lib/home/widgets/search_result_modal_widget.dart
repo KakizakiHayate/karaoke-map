@@ -9,12 +9,14 @@ class SearchResultModalWidget extends StatefulWidget {
   final ScrollController scrollController;
   final List<PlaceResult> searchResults;
   final bool isLoading;
+  final String searchRadius;
 
   const SearchResultModalWidget({
     super.key,
     required this.scrollController,
     required this.searchResults,
     required this.isLoading,
+    required this.searchRadius,
   });
 
   @override
@@ -81,6 +83,12 @@ class _SearchResultModalWidgetState extends State<SearchResultModalWidget> {
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
               ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '${widget.searchRadius}m範囲内にはカラオケチェーン店がありません',
+              style: TextStyle(color: Colors.grey[600]),
+              textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
             Text(
