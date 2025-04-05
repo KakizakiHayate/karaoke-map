@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'home/home_screen.dart';
 import 'app_state.dart';
 import 'services/database_helper.dart';
+import 'theme/app_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,9 +29,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
+      theme: AppTheme.theme,
       home: const AppStartupHandler(),
     );
   }

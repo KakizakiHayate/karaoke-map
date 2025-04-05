@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../theme/app_theme.dart';
 
 class KaraokeChainSettingsScreen extends StatefulWidget {
   final Map<String, bool> initialSelectedChains;
@@ -30,7 +31,7 @@ class _KaraokeChainSettingsScreenState
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('カラオケチェーン設定'),
+        title: const Text('カラオケチェーン設定', style: TextStyle(color: Colors.white)),
         actions: [
           if (_hasChanges)
             TextButton(
@@ -39,9 +40,13 @@ class _KaraokeChainSettingsScreenState
                     Map.fromEntries(_chainSettings);
                 Navigator.pop(context, result);
               },
-              child: const Text('保存'),
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('保存', style: TextStyle(color: Colors.white)),
             ),
         ],
+        backgroundColor: AppTheme.primaryBlue,
       ),
       body: Column(
         children: [
@@ -50,7 +55,7 @@ class _KaraokeChainSettingsScreenState
             child: Text(
               '※ 上から$_maxVisibleOnHome件までがホーム画面に表示されます',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.grey[600],
+                    color: AppTheme.textPrimary,
                   ),
             ),
           ),
@@ -87,14 +92,14 @@ class _KaraokeChainSettingsScreenState
                               vertical: 2,
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.blue[100],
+                              color: AppTheme.primaryBlue.withOpacity(0.2),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: const Text(
                               'ホーム表示',
                               style: TextStyle(
                                 fontSize: 12,
-                                color: Colors.blue,
+                                color: AppTheme.primaryBlue,
                               ),
                             ),
                           ),
@@ -103,6 +108,7 @@ class _KaraokeChainSettingsScreenState
                   ),
                   trailing: Checkbox(
                     value: chain.value,
+                    activeColor: AppTheme.primaryBlue,
                     onChanged: (bool? value) {
                       if (value != null) {
                         setState(() {

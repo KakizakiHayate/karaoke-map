@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../theme/app_theme.dart';
 
 class BottomNavigationWidget extends StatelessWidget {
   final int selectedIndex;
@@ -29,6 +30,11 @@ class BottomNavigationWidget extends StatelessWidget {
       ],
       currentIndex: selectedIndex,
       onTap: onTap,
+      selectedItemColor: AppTheme.primaryBlue,
+      unselectedItemColor: Colors.grey,
+      backgroundColor: Colors.white,
+      elevation: 8,
+      type: BottomNavigationBarType.fixed,
     );
   }
-} 
+}

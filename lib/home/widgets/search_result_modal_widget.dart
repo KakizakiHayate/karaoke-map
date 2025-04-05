@@ -3,6 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../models/place_result.dart';
 import '../../services/places_service.dart';
+import '../../theme/app_theme.dart';
 
 class SearchResultModalWidget extends StatefulWidget {
   final ScrollController scrollController;
@@ -62,94 +63,69 @@ class _SearchResultModalWidgetState extends State<SearchResultModalWidget> {
   Widget _buildResultCard(BuildContext context, PlaceResult result) {
     return Card(
       margin: const EdgeInsets.all(8),
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 店名とレビュー情報
+          // カラオケ店の写真が存在する場合のみ表示
+          if (result.photoReference != null)
+            ClipRRect(
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(12)),
+              child: Image.network(
+                PlacesService().getPhotoUrl(result.photoReference!),
+                height: 160,
+                width: double.infinity,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    height: 100,
+                    color: AppTheme.primaryBlue.withOpacity(0.1),
+                    child: const Center(
+                      child: Icon(Icons.image_not_supported),
+                    ),
+                  );
+                },
+              ),
+            ),
+
+          // 基本情報
           Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  result.name,
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                const SizedBox(height: 4),
-                // レビュー情報
                 Row(
                   children: [
-                    // 星の表示
-                    Row(
-                      children: List.generate(5, (index) {
-                        return Icon(
-                          index < result.rating.floor()
-                              ? Icons.star
-                              : index < result.rating
-                                  ? Icons.star_half
-                                  : Icons.star_border,
-                          size: 16,
-                          color: Colors.amber,
-                        );
-                      }),
-                    ),
-                    const SizedBox(width: 4),
-                    // 評価点数
-                    Text(
-                      result.rating.toString(),
-                      style: const TextStyle(
-                        color: Colors.grey,
-                        fontSize: 14,
+                    Expanded(
+                      child: Text(
+                        result.name,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          color: AppTheme.textPrimary,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
-                    const SizedBox(width: 4),
-                    // レビュー数
-                    Text(
-                      '(${result.userRatingsTotal})',
-                      style: const TextStyle(
-                        color: Colors.grey,
-                        fontSize: 14,
+                    if (result.rating > 0)
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.star,
+                            size: 16,
+                            color: Colors.amber[700],
+                          ),
+                          const SizedBox(width: 4),
+                          Text('${result.rating}'),
+                        ],
                       ),
-                    ),
                   ],
                 ),
-                // 距離表示
-                if (result.getDistanceText().isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(
-                      result.getDistanceText(),
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Colors.grey[600],
-                          ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
+                const SizedBox(height: 8),
 
-          // 店舗画像
-          if (result.photoReference != null)
-            Image.network(
-              PlacesService().getPhotoUrl(result.photoReference!),
-              height: 200,
-              width: double.infinity,
-              fit: BoxFit.cover,
-            )
-          else
-            Image.asset(
-              'assets/images/no_image.png', // デフォルト画像を追加する必要があります
-              height: 200,
-              width: double.infinity,
-              fit: BoxFit.cover,
-            ),
-
-          // 営業時間と住所
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
                 // 営業時間
                 Row(
                   children: [
@@ -158,8 +134,9 @@ class _SearchResultModalWidgetState extends State<SearchResultModalWidget> {
                           ? Icons.check_circle
                           : Icons.access_time,
                       size: 16,
-                      color:
-                          result.isOpenNow == true ? Colors.green : Colors.red,
+                      color: result.isOpenNow == true
+                          ? Colors.green
+                          : AppTheme.primaryRed,
                     ),
                     const SizedBox(width: 8),
                     Text(
@@ -167,33 +144,39 @@ class _SearchResultModalWidgetState extends State<SearchResultModalWidget> {
                       style: TextStyle(
                         color: result.isOpenNow == true
                             ? Colors.green
-                            : Colors.red,
+                            : AppTheme.primaryRed,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                     const SizedBox(width: 8),
                     Text(
                       result.getOpeningHoursText(),
                       style: TextStyle(
-                        color:
-                            result.isOpenNow == true ? Colors.grey : Colors.red,
+                        color: result.isOpenNow == true
+                            ? AppTheme.textPrimary
+                            : AppTheme.primaryRed,
                       ),
                     ),
                   ],
                 ),
+                const SizedBox(height: 8),
+
                 // 住所
-                const SizedBox(height: 4),
                 Row(
                   children: [
                     const Icon(
                       Icons.location_on,
                       size: 16,
-                      color: Colors.grey,
+                      color: AppTheme.primaryBlue,
                     ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         result.address,
-                        style: const TextStyle(color: Colors.grey),
+                        style: const TextStyle(
+                          color: AppTheme.textPrimary,
+                          fontSize: 14,
+                        ),
                       ),
                     ),
                   ],
@@ -205,30 +188,72 @@ class _SearchResultModalWidgetState extends State<SearchResultModalWidget> {
           // アクションボタン
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
             child: Row(
               children: [
-                TextButton.icon(
-                  icon: const Icon(Icons.directions),
-                  label: const Text('ここにいく'),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.directions, color: Colors.white),
+                  label: const Text('ここにいく',
+                      style: TextStyle(
+                          color: Colors.white, fontWeight: FontWeight.bold)),
                   onPressed: () => _openInMaps(result),
-                ),
-                if (result.website != null)
-                  TextButton.icon(
-                    icon: const Icon(Icons.language),
-                    label: const Text('ウェブサイト'),
-                    onPressed: () => _launchUrl(result.website!),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryBlue,
+                    foregroundColor: Colors.white,
+                    elevation: 2,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
                   ),
-                TextButton.icon(
-                  icon: const Icon(Icons.share),
-                  label: const Text('共有'),
-                  onPressed: () => _sharePlace(result),
                 ),
+                const SizedBox(width: 8),
+                if (result.website != null)
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.language, color: AppTheme.primaryBlue),
+                    label: const Text('ウェブサイト',
+                        style: TextStyle(color: AppTheme.primaryBlue)),
+                    onPressed: () => _launchUrl(result.website!),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: AppTheme.primaryBlue),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                    ),
+                  ),
+                const SizedBox(width: 8),
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.share, color: AppTheme.primaryBlue),
+                  label:
+                      const Text('共有', style: TextStyle(color: AppTheme.primaryBlue)),
+                  onPressed: () => _sharePlace(result),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: AppTheme.primaryBlue),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
                 if (result.phoneNumber != null)
-                  TextButton.icon(
-                    icon: const Icon(Icons.phone),
-                    label: const Text('電話'),
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.phone, color: AppTheme.primaryBlue),
+                    label: const Text('電話',
+                        style: TextStyle(color: AppTheme.primaryBlue)),
                     onPressed: () => _callPhone(result.phoneNumber!),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: AppTheme.primaryBlue),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                    ),
                   ),
               ],
             ),
