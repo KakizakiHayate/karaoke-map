@@ -65,15 +65,15 @@ class _KaraokeChainSettingsScreenState
                     ),
                   ),
                   const SizedBox(width: 16),
-                  Row(
+                  const Row(
                     children: [
                       Icon(
                         Icons.music_note,
                         color: AppTheme.primaryBlue,
                         size: 20,
                       ),
-                      const SizedBox(width: 8),
-                      const Text(
+                      SizedBox(width: 8),
+                      Text(
                         'カラオケチェーン設定',
                         style: TextStyle(
                           color: AppTheme.textPrimary,
