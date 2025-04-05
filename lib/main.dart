@@ -29,11 +29,76 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       theme: ThemeData(
-        primarySwatch: Colors.blue,
+        primaryColor: const Color(0xFF00AEEF),
+        primarySwatch: _createMaterialColor(const Color(0xFF00AEEF)),
+        colorScheme: ColorScheme.light(
+          primary: const Color(0xFF00AEEF),
+          secondary: const Color(0xFFE0E0E0),
+          error: const Color(0xFFE4002B),
+        ),
+        textTheme: const TextTheme(
+          titleLarge: TextStyle(
+            fontFamily: 'NotoSansJP',
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF1A1A1A),
+          ),
+          titleMedium: TextStyle(
+            fontFamily: 'NotoSansJP',
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF1A1A1A),
+          ),
+          titleSmall: TextStyle(
+            fontFamily: 'NotoSansJP',
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF1A1A1A),
+          ),
+          bodyLarge: TextStyle(color: Color(0xFF1A1A1A)),
+          bodyMedium: TextStyle(color: Color(0xFF1A1A1A)),
+          bodySmall: TextStyle(color: Color(0xFF1A1A1A)),
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            textStyle: const TextStyle(
+              fontFamily: 'NotoSansJP',
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+        bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+          selectedLabelStyle: TextStyle(
+            fontFamily: 'NotoSansJP',
+            fontWeight: FontWeight.w700,
+          ),
+          unselectedLabelStyle: TextStyle(
+            fontFamily: 'NotoSansJP',
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        scaffoldBackgroundColor: Colors.white,
+        cardColor: const Color(0xFFE0E0E0),
+        dividerColor: const Color(0xFFE0E0E0),
       ),
       home: const AppStartupHandler(),
     );
   }
+}
+
+// プライマリーカラーからマテリアルカラーを生成する関数
+MaterialColor _createMaterialColor(Color color) {
+  List<double> strengths = <double>[.05, .1, .2, .3, .4, .5, .6, .7, .8, .9];
+  Map<int, Color> swatch = {};
+  final int r = color.red, g = color.green, b = color.blue;
+
+  for (var strength in strengths) {
+    final double ds = 0.5 - strength;
+    swatch[(strength * 1000).round()] = Color.fromRGBO(
+      r + ((ds < 0 ? r : (255 - r)) * ds).round(),
+      g + ((ds < 0 ? g : (255 - g)) * ds).round(),
+      b + ((ds < 0 ? b : (255 - b)) * ds).round(),
+      1,
+    );
+  }
+  return MaterialColor(color.value, swatch);
 }
 
 class AppStartupHandler extends StatelessWidget {

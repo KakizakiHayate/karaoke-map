@@ -116,25 +116,16 @@ class _SearchDetailScreenState extends State<SearchDetailScreen> {
           decoration: const InputDecoration(
             hintText: 'カラオケ店を検索',
             border: InputBorder.none,
-            hintStyle: TextStyle(color: Colors.grey),
+            hintStyle: TextStyle(color: Colors.white),
           ),
-          style: Theme.of(context).textTheme.titleLarge,
+          style: const TextStyle(color: Colors.white, fontSize: 18),
           onChanged: _onSearchChanged,
-          onSubmitted: (value) async {
-            if (value.isNotEmpty) {
-              if (!mounted) return;
-              final navigator = Navigator.of(context);
-              final searchType = value.contains('駅') ? 'station' : 'location';
-              await _saveSearchHistory(value, searchType);
-              if (!mounted) return;
-              navigator.pop(value);
-            }
-          },
         ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
+        backgroundColor: const Color(0xFF00AEEF),
       ),
       body: _isSearching
           ? const Center(child: CircularProgressIndicator())

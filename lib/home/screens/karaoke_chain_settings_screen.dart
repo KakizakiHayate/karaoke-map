@@ -30,7 +30,7 @@ class _KaraokeChainSettingsScreenState
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('カラオケチェーン設定'),
+        title: const Text('カラオケチェーン設定', style: TextStyle(color: Colors.white)),
         actions: [
           if (_hasChanges)
             TextButton(
@@ -39,9 +39,13 @@ class _KaraokeChainSettingsScreenState
                     Map.fromEntries(_chainSettings);
                 Navigator.pop(context, result);
               },
-              child: const Text('保存'),
+              child: const Text('保存', style: TextStyle(color: Colors.white)),
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.white,
+              ),
             ),
         ],
+        backgroundColor: const Color(0xFF00AEEF),
       ),
       body: Column(
         children: [
@@ -50,7 +54,7 @@ class _KaraokeChainSettingsScreenState
             child: Text(
               '※ 上から$_maxVisibleOnHome件までがホーム画面に表示されます',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.grey[600],
+                    color: const Color(0xFF1A1A1A),
                   ),
             ),
           ),
@@ -87,14 +91,14 @@ class _KaraokeChainSettingsScreenState
                               vertical: 2,
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.blue[100],
+                              color: const Color(0xFF00AEEF).withOpacity(0.2),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: const Text(
                               'ホーム表示',
                               style: TextStyle(
                                 fontSize: 12,
-                                color: Colors.blue,
+                                color: Color(0xFF00AEEF),
                               ),
                             ),
                           ),
@@ -103,6 +107,7 @@ class _KaraokeChainSettingsScreenState
                   ),
                   trailing: Checkbox(
                     value: chain.value,
+                    activeColor: const Color(0xFF00AEEF),
                     onChanged: (bool? value) {
                       if (value != null) {
                         setState(() {

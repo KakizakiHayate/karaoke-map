@@ -29,6 +29,10 @@ class BottomNavigationWidget extends StatelessWidget {
       ],
       currentIndex: selectedIndex,
       onTap: onTap,
+      selectedItemColor: Colors.white,
+      unselectedItemColor: Colors.white70,
+      backgroundColor: const Color(0xFF00AEEF),
+      elevation: 0,
     );
   }
-} 
+}

@@ -96,13 +96,30 @@ class _SearchHeaderWidgetState extends State<SearchHeaderWidget> {
                     },
                     decoration: InputDecoration(
                       hintText: 'カラオケ店を検索',
-                      prefixIcon: const Icon(Icons.search),
+                      hintStyle: const TextStyle(
+                          color: Color(0xFF1A1A1A), fontSize: 14),
+                      prefixIcon:
+                          const Icon(Icons.search, color: Color(0xFF00AEEF)),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide.none,
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(
+                            color: Color(0xFF00AEEF), width: 2),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
                       ),
                       filled: true,
-                      fillColor: Colors.grey[200],
+                      fillColor: Colors.white,
+                      contentPadding: const EdgeInsets.symmetric(
+                          vertical: 12, horizontal: 16),
                     ),
+                    style:
+                        const TextStyle(color: Color(0xFF1A1A1A), fontSize: 14),
                     onSubmitted: (value) {
                       if (value.isNotEmpty) {
                         widget.onSearch?.call(value, _selectedRadius);
@@ -113,17 +130,28 @@ class _SearchHeaderWidgetState extends State<SearchHeaderWidget> {
                 const SizedBox(width: 8),
                 Container(
                   decoration: BoxDecoration(
-                    color: Colors.grey[200],
+                    color: Colors.white,
                     borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFF00AEEF)),
                   ),
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
                   child: DropdownButton<String>(
                     value: _selectedRadius,
                     underline: Container(),
+                    icon: const Icon(Icons.arrow_drop_down,
+                        color: Color(0xFF00AEEF)),
+                    dropdownColor: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
                     items: _radiusOptions.map((String value) {
                       return DropdownMenuItem<String>(
                         value: value,
-                        child: Text('${value}m'),
+                        child: Text(
+                          '${value}m',
+                          style: const TextStyle(
+                            color: Color(0xFF1A1A1A),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
                       );
                     }).toList(),
                     onChanged: (String? newValue) {
@@ -141,7 +169,7 @@ class _SearchHeaderWidgetState extends State<SearchHeaderWidget> {
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             Row(
               children: [
                 Expanded(
@@ -152,8 +180,30 @@ class _SearchHeaderWidgetState extends State<SearchHeaderWidget> {
                         return Padding(
                           padding: const EdgeInsets.only(right: 8),
                           child: FilterChip(
-                            label: Text(entry.key),
+                            label: Text(
+                              entry.key,
+                              style: TextStyle(
+                                color: entry.value
+                                    ? Colors.white
+                                    : const Color(0xFF1A1A1A),
+                                fontWeight: entry.value
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                              ),
+                            ),
                             selected: entry.value,
+                            showCheckmark: false,
+                            selectedColor: const Color(0xFF00AEEF),
+                            backgroundColor: Colors.white,
+                            shape: StadiumBorder(
+                              side: BorderSide(
+                                color: entry.value
+                                    ? const Color(0xFF00AEEF)
+                                    : const Color(0xFFE0E0E0),
+                              ),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 4, vertical: 4),
                             onSelected: (bool selected) {
                               final newChains =
                                   Map<String, bool>.from(widget.selectedChains);
@@ -166,26 +216,38 @@ class _SearchHeaderWidgetState extends State<SearchHeaderWidget> {
                     ),
                   ),
                 ),
-                TextButton(
-                  onPressed: () async {
-                    final result = await Navigator.push<Map<String, bool>>(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => KaraokeChainSettingsScreen(
-                          initialSelectedChains: widget.selectedChains,
+                Container(
+                  child: TextButton.icon(
+                    onPressed: () async {
+                      final result = await Navigator.push<Map<String, bool>>(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => KaraokeChainSettingsScreen(
+                            initialSelectedChains: widget.selectedChains,
+                          ),
                         ),
-                      ),
-                    );
+                      );
 
-                    if (result != null) {
-                      widget.onChainsUpdated(result);
-                      if (_searchController.text.isNotEmpty) {
-                        widget.onSearch
-                            ?.call(_searchController.text, _selectedRadius);
+                      if (result != null) {
+                        widget.onChainsUpdated(result);
+                        if (_searchController.text.isNotEmpty) {
+                          widget.onSearch
+                              ?.call(_searchController.text, _selectedRadius);
+                        }
                       }
-                    }
-                  },
-                  child: const Text('すべて表示'),
+                    },
+                    icon: const Icon(Icons.tune,
+                        size: 18, color: Color(0xFF1A1A1A)),
+                    label: const Text('カスタマイズ',
+                        style: TextStyle(
+                            color: Color(0xFF1A1A1A),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13)),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                    ),
+                  ),
                 ),
               ],
             ),
