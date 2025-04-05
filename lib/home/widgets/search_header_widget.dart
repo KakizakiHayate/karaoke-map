@@ -97,21 +97,18 @@ class _SearchHeaderWidgetState extends State<SearchHeaderWidget> {
                     decoration: InputDecoration(
                       hintText: 'カラオケ店を検索',
                       hintStyle: const TextStyle(
-                          color: Color(0xFF1A1A1A), fontSize: 14),
+                          color: Color(0xFF757575), fontSize: 14),
                       prefixIcon:
                           const Icon(Icons.search, color: Color(0xFF00AEEF)),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide.none,
-                      ),
-                      focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                         borderSide: const BorderSide(
                             color: Color(0xFF00AEEF), width: 2),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+                        borderSide: const BorderSide(
+                            color: Color(0xFF00AEEF), width: 1),
                       ),
                       filled: true,
                       fillColor: Colors.white,
@@ -217,7 +214,7 @@ class _SearchHeaderWidgetState extends State<SearchHeaderWidget> {
                   ),
                 ),
                 Container(
-                  child: TextButton.icon(
+                  child: IconButton(
                     onPressed: () async {
                       final result = await Navigator.push<Map<String, bool>>(
                         context,
@@ -238,15 +235,6 @@ class _SearchHeaderWidgetState extends State<SearchHeaderWidget> {
                     },
                     icon: const Icon(Icons.tune,
                         size: 18, color: Color(0xFF1A1A1A)),
-                    label: const Text('カスタマイズ',
-                        style: TextStyle(
-                            color: Color(0xFF1A1A1A),
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13)),
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 8),
-                    ),
                   ),
                 ),
               ],
