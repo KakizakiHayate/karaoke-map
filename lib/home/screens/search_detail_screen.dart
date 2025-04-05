@@ -90,6 +90,7 @@ class _SearchDetailScreenState extends State<SearchDetailScreen> {
     _searchController.text = text;
     final searchType = text.contains('駅') ? 'station' : 'location';
     await _saveSearchHistory(text, searchType);
+    if (!mounted) return;
     Navigator.pop(context, text);
   }
 
@@ -121,10 +122,11 @@ class _SearchDetailScreenState extends State<SearchDetailScreen> {
           onChanged: _onSearchChanged,
           onSubmitted: (value) async {
             if (value.isNotEmpty) {
-              final navigator = Navigator.of(context);
               if (!mounted) return;
+              final navigator = Navigator.of(context);
               final searchType = value.contains('駅') ? 'station' : 'location';
               await _saveSearchHistory(value, searchType);
+              if (!mounted) return;
               navigator.pop(value);
             }
           },
@@ -207,6 +209,7 @@ class _SearchDetailScreenState extends State<SearchDetailScreen> {
                             ),
                             onTap: () {
                               final navigator = Navigator.of(context);
+                              if (!mounted) return;
                               navigator.pop(history.searchQuery);
                             },
                           ),
