@@ -13,7 +13,7 @@ class SearchHistoryService {
 
   // ユーザーの検索履歴を取得（最新順）
   Future<List<SearchHistory>> getUserSearchHistory(int userId,
-      {int limit = 10}) async {
+      {int limit = 20}) async {
     final db = await _db.database;
     final result = await db.query(
       'search_histories',
