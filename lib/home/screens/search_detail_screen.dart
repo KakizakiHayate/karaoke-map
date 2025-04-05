@@ -88,6 +88,8 @@ class _SearchDetailScreenState extends State<SearchDetailScreen> {
     final String text = suggestion.mainText;
     if (!mounted) return;
     _searchController.text = text;
+    final searchType = text.contains('駅') ? 'station' : 'location';
+    await _saveSearchHistory(text, searchType);
     Navigator.pop(context, text);
   }
 
@@ -121,7 +123,8 @@ class _SearchDetailScreenState extends State<SearchDetailScreen> {
             if (value.isNotEmpty) {
               final navigator = Navigator.of(context);
               if (!mounted) return;
-              await _saveSearchHistory(value, 'location');
+              final searchType = value.contains('駅') ? 'station' : 'location';
+              await _saveSearchHistory(value, searchType);
               navigator.pop(value);
             }
           },
@@ -152,7 +155,6 @@ class _SearchDetailScreenState extends State<SearchDetailScreen> {
                     onTap: () async {
                       final navigator = Navigator.of(context);
                       if (!mounted) return;
-                      await _saveSearchHistory('現在地', 'current_location');
                       navigator.pop('');
                     },
                   ),
@@ -179,32 +181,36 @@ class _SearchDetailScreenState extends State<SearchDetailScreen> {
                         ],
                       ),
                     ),
-                    ..._searchHistory.map(
-                      (history) => ListTile(
-                        leading: Icon(
-                          history.searchType == 'current_location'
-                              ? Icons.my_location
-                              : Icons.search,
-                          color: Colors.grey,
+                    ..._searchHistory
+                        .where((history) =>
+                            history.searchType == 'location' ||
+                            history.searchType == 'station')
+                        .map(
+                          (history) => ListTile(
+                            leading: Icon(
+                              history.searchType == 'station'
+                                  ? Icons.train
+                                  : Icons.search,
+                              color: Colors.grey,
+                            ),
+                            title: Text(history.searchQuery),
+                            trailing: IconButton(
+                              icon: const Icon(Icons.close),
+                              onPressed: () async {
+                                if (history.id != null) {
+                                  if (!mounted) return;
+                                  await _historyService
+                                      .deleteSearchHistory(history.id!);
+                                  await _loadSearchHistory();
+                                }
+                              },
+                            ),
+                            onTap: () {
+                              final navigator = Navigator.of(context);
+                              navigator.pop(history.searchQuery);
+                            },
+                          ),
                         ),
-                        title: Text(history.searchQuery),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.close),
-                          onPressed: () async {
-                            if (history.id != null) {
-                              if (!mounted) return;
-                              await _historyService
-                                  .deleteSearchHistory(history.id!);
-                              await _loadSearchHistory();
-                            }
-                          },
-                        ),
-                        onTap: () {
-                          final navigator = Navigator.of(context);
-                          navigator.pop(history.searchQuery);
-                        },
-                      ),
-                    ),
                     const Divider(height: 1),
                   ],
                 ],
