@@ -474,8 +474,7 @@ class _HomeScreenState extends State<HomeScreen> {
               Positioned(
                 left: 0,
                 right: 0,
-                bottom:
-                    MediaQuery.of(context).size.height * _kMinModalSize + 16,
+                bottom: MediaQuery.of(context).size.height * _kMinModalSize + 8,
                 child: PlaceInfoWindow(
                   places: _searchResults,
                   selectedIndex: _selectedPlaceIndex,
