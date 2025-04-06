@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:url_launcher/url_launcher_string.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../models/place_result.dart';
 import '../../services/places_service.dart';
@@ -344,13 +345,20 @@ class _SearchResultModalWidgetState extends State<SearchResultModalWidget> {
       'https://www.google.com/maps/search/?api=1&query=${place.lat},${place.lng}',
     );
     if (await canLaunchUrl(url)) {
-      await launchUrl(url);
+      await launchUrl(
+        url,
+        mode: LaunchMode.externalApplication,
+      );
     }
   }
 
   Future<void> _launchUrl(String url) async {
-    if (await canLaunchUrl(Uri.parse(url))) {
-      await launchUrl(Uri.parse(url));
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(
+        uri,
+        mode: LaunchMode.inAppWebView,
+      );
     }
   }
 
@@ -362,9 +370,12 @@ class _SearchResultModalWidgetState extends State<SearchResultModalWidget> {
   }
 
   Future<void> _callPhone(String phoneNumber) async {
-    final url = 'tel:$phoneNumber';
-    if (await canLaunchUrl(Uri.parse(url))) {
-      await launchUrl(Uri.parse(url));
+    final uri = Uri.parse('tel:$phoneNumber');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
     }
   }
 }

@@ -5,11 +5,51 @@ import '../models/place_result.dart';
 import 'dart:math';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:logger/logger.dart';
+import 'dart:async';
 
 class PlacesService {
   static const String _apiKey = 'AIzaSyAECg6Ww6B3v3YtibYZkUXE_5tditY5eqI';
   static const String _baseUrl = 'https://maps.googleapis.com/maps/api/place';
   final Logger _logger = Logger();
+
+  // リトライ回数とタイムアウト時間の設定
+  static const int _maxRetries = 3;
+  static const Duration _timeout = Duration(seconds: 10);
+  static const Duration _retryDelay = Duration(seconds: 2);
+
+  // リトライ機能付きHTTPリクエスト
+  Future<http.Response> _retryableGet(Uri url) async {
+    int attempts = 0;
+    late http.Response response;
+
+    while (attempts < _maxRetries) {
+      attempts++;
+      try {
+        response = await http.get(url).timeout(_timeout);
+
+        if (response.statusCode == 200) {
+          return response;
+        } else if (response.statusCode >= 500) {
+          // サーバーエラーの場合はリトライ
+          _logger.w(
+              'サーバーエラー (${response.statusCode}), リトライ $attempts/$_maxRetries');
+        } else {
+          // 400番台など他のエラーはリトライせず即座に返す
+          return response;
+        }
+      } catch (e) {
+        _logger.w('リクエストエラー: $e, リトライ $attempts/$_maxRetries');
+        if (attempts == _maxRetries) {
+          rethrow; // 最大リトライ回数に達したら例外を再スロー
+        }
+      }
+
+      // 次のリトライまで少し待機
+      await Future.delayed(_retryDelay);
+    }
+
+    return response; // これは実行されないはずだが、コンパイルのために必要
+  }
 
   Future<List<PlaceSuggestion>> getAutocompleteSuggestions(
     String input,
@@ -20,7 +60,7 @@ class PlacesService {
     );
 
     try {
-      final response = await http.get(url);
+      final response = await _retryableGet(url);
       _logger.d('Response status: ${response.statusCode}');
       _logger.d('Response body: ${response.body}');
 
@@ -76,150 +116,161 @@ class PlacesService {
       _logger.d('Using Text Search: $searchUrl');
     }
 
-    final searchResponse = await http.get(searchUrl);
-    if (searchResponse.statusCode != 200) {
-      _logger.e(
-          'API Error: ${searchResponse.statusCode} - ${searchResponse.body}');
-      return [];
-    }
-
-    final searchJson = jsonDecode(searchResponse.body);
-
-    // 近隣検索がZERO_RESULTSを返した場合、テキスト検索にフォールバック
-    if (searchType == 'nearby' &&
-        searchJson['status'] == 'ZERO_RESULTS' &&
-        userLocation != null) {
-      _logger.w(
-          'Nearby search returned ZERO_RESULTS, falling back to text search');
-
-      // テキスト検索で「カラオケ」を検索
-      final fallbackUrl = Uri.parse(
-        '$_baseUrl/textsearch/json?query=カラオケ&location=${userLocation.latitude},${userLocation.longitude}'
-        '&radius=$radius&language=ja&region=jp&key=$_apiKey',
-      );
-
-      _logger.d('Using fallback Text Search: $fallbackUrl');
-      final fallbackResponse = await http.get(fallbackUrl);
-
-      if (fallbackResponse.statusCode == 200) {
-        final fallbackJson = jsonDecode(fallbackResponse.body);
-        if (fallbackJson['status'] == 'OK') {
-          searchJson.clear();
-          searchJson.addAll(fallbackJson);
-        } else {
-          _logger.e(
-              'Fallback search also failed: ${fallbackJson['status']} - ${fallbackJson['error_message'] ?? "Unknown error"}');
-        }
-      }
-    }
-
-    if (searchJson['status'] != 'OK') {
-      _logger.e(
-          'API Status Error: ${searchJson['status']} - ${searchJson['error_message'] ?? "Unknown error"}');
-      return [];
-    }
-
-    _logger.d(
-        'Total results before filtering: ${(searchJson['results'] as List).length}');
-
-    // 検索結果をフィルタリング
-    final filteredResults = (searchJson['results'] as List).where((place) {
-      final placeName = place['name'] as String;
-
-      // 選択されたチェーン店が空の場合はすべて表示
-      if (selectedChains.isEmpty || selectedChains.values.every((v) => !v)) {
-        return true;
+    try {
+      final searchResponse = await _retryableGet(searchUrl);
+      if (searchResponse.statusCode != 200) {
+        _logger.e(
+            'API Error: ${searchResponse.statusCode} - ${searchResponse.body}');
+        return [];
       }
 
-      // 選択されたチェーン店に含まれているかチェック
-      return selectedChains.entries
-          .where((entry) => entry.value) // trueのものだけ
-          .any((entry) => placeName.contains(entry.key));
-    }).toList();
+      final searchJson = jsonDecode(searchResponse.body);
 
-    _logger.d('Results after chain filtering: ${filteredResults.length}');
+      // 近隣検索がZERO_RESULTSを返した場合、テキスト検索にフォールバック
+      if (searchType == 'nearby' &&
+          searchJson['status'] == 'ZERO_RESULTS' &&
+          userLocation != null) {
+        _logger.w(
+            'Nearby search returned ZERO_RESULTS, falling back to text search');
 
-    // フィルタリングされた結果に対して詳細情報を取得
-    final futures = filteredResults.map((place) async {
-      // 詳細情報を取得
-      final detailsUrl = Uri.parse(
-        '$_baseUrl/details/json?place_id=${place['place_id']}&language=ja&fields=formatted_phone_number,website,opening_hours,photos&key=$_apiKey',
-      );
-
-      final detailsResponse = await http.get(detailsUrl);
-      if (detailsResponse.statusCode == 200) {
-        final detailsJson = jsonDecode(detailsResponse.body);
-        if (detailsJson['status'] == 'OK') {
-          place.addAll(detailsJson['result']);
-        }
-      }
-
-      final placeLocation = LatLng(
-        place['geometry']['location']['lat'],
-        place['geometry']['location']['lng'],
-      );
-
-      // 距離情報の設定
-      double? distance;
-      if (query.contains('駅')) {
-        // 駅検索の場合
-        if (searchLocation != null) {
-          distance = _calculateDistance(
-            searchLocation.latitude,
-            searchLocation.longitude,
-            placeLocation.latitude,
-            placeLocation.longitude,
-          );
-          place['distance'] = distance;
-          place['distance_type'] = 'station';
-          place['station_name'] = query;
-          _logger.d('Station search - Distance: $distance, Station: $query');
-        }
-      } else if (query.isEmpty && userLocation != null) {
-        // 現在地検索の場合
-        distance = _calculateDistance(
-          userLocation.latitude,
-          userLocation.longitude,
-          placeLocation.latitude,
-          placeLocation.longitude,
+        // テキスト検索で「カラオケ」を検索
+        final fallbackUrl = Uri.parse(
+          '$_baseUrl/textsearch/json?query=カラオケ&location=${userLocation.latitude},${userLocation.longitude}'
+          '&radius=$radius&language=ja&region=jp&key=$_apiKey',
         );
-        place['distance'] = distance;
-        place['distance_type'] = 'current';
-        _logger.d('Current location search - Distance: $distance');
-      } else {
-        // エリア検索の場合
-        _logger.d('Area search - Finding nearest station...');
-        final nearestStation = await _findNearestStation(placeLocation);
-        if (nearestStation != null) {
-          // 最寄り駅情報と距離を設定
-          place['nearest_station'] = nearestStation;
-          distance = nearestStation['distance'];
-          place['distance'] = distance;
-          place['distance_type'] = 'nearest';
-          _logger.d(
-              'Found nearest station: ${nearestStation['name']} - Distance: ${distance}m');
+
+        _logger.d('Using fallback Text Search: $fallbackUrl');
+        final fallbackResponse = await _retryableGet(fallbackUrl);
+
+        if (fallbackResponse.statusCode == 200) {
+          final fallbackJson = jsonDecode(fallbackResponse.body);
+          if (fallbackJson['status'] == 'OK') {
+            searchJson.clear();
+            searchJson.addAll(fallbackJson);
+          } else {
+            _logger.e(
+                'Fallback search also failed: ${fallbackJson['status']} - ${fallbackJson['error_message'] ?? "Unknown error"}');
+          }
         }
       }
 
-      // 距離情報をログに出力（デバッグ用）
-      _logger
-          .d('Place: ${place['name']}, Distance: $distance, Radius: $radius');
-
-      // 指定された半径内かどうかをチェック
-      if (distance != null && distance <= radius) {
-        return PlaceResult.fromJson(place);
+      if (searchJson['status'] != 'OK') {
+        _logger.e(
+            'API Status Error: ${searchJson['status']} - ${searchJson['error_message'] ?? "Unknown error"}');
+        return [];
       }
-      return null;
-    });
 
-    // nullを除外して結果を返す
-    final results = await Future.wait(futures);
-    final finalResults = results.whereType<PlaceResult>().toList();
+      _logger.d(
+          'Total results before filtering: ${(searchJson['results'] as List).length}');
 
-    _logger
-        .d('Final results count (within ${radius}m): ${finalResults.length}');
+      // 検索結果をフィルタリング
+      final filteredResults = (searchJson['results'] as List).where((place) {
+        final placeName = place['name'] as String;
 
-    return finalResults;
+        // 選択されたチェーン店が空の場合はすべて表示
+        if (selectedChains.isEmpty || selectedChains.values.every((v) => !v)) {
+          return true;
+        }
+
+        // 選択されたチェーン店に含まれているかチェック
+        return selectedChains.entries
+            .where((entry) => entry.value) // trueのものだけ
+            .any((entry) => placeName.contains(entry.key));
+      }).toList();
+
+      _logger.d('Results after chain filtering: ${filteredResults.length}');
+
+      // フィルタリングされた結果に対して詳細情報を取得
+      final futures = filteredResults.map((place) async {
+        try {
+          // 詳細情報を取得
+          final detailsUrl = Uri.parse(
+            '$_baseUrl/details/json?place_id=${place['place_id']}&language=ja&fields=formatted_phone_number,website,opening_hours,photos&key=$_apiKey',
+          );
+
+          final detailsResponse = await _retryableGet(detailsUrl);
+          if (detailsResponse.statusCode == 200) {
+            final detailsJson = jsonDecode(detailsResponse.body);
+            if (detailsJson['status'] == 'OK') {
+              place.addAll(detailsJson['result']);
+            }
+          }
+
+          final placeLocation = LatLng(
+            place['geometry']['location']['lat'],
+            place['geometry']['location']['lng'],
+          );
+
+          // 距離情報の設定
+          double? distance;
+          if (query.contains('駅')) {
+            // 駅検索の場合
+            if (searchLocation != null) {
+              distance = _calculateDistance(
+                searchLocation.latitude,
+                searchLocation.longitude,
+                placeLocation.latitude,
+                placeLocation.longitude,
+              );
+              place['distance'] = distance;
+              place['distance_type'] = 'station';
+              place['station_name'] = query;
+              _logger
+                  .d('Station search - Distance: $distance, Station: $query');
+            }
+          } else if (query.isEmpty && userLocation != null) {
+            // 現在地検索の場合
+            distance = _calculateDistance(
+              userLocation.latitude,
+              userLocation.longitude,
+              placeLocation.latitude,
+              placeLocation.longitude,
+            );
+            place['distance'] = distance;
+            place['distance_type'] = 'current';
+            _logger.d('Current location search - Distance: $distance');
+          } else {
+            // エリア検索の場合
+            _logger.d('Area search - Finding nearest station...');
+            final nearestStation = await _findNearestStation(placeLocation);
+            if (nearestStation != null) {
+              // 最寄り駅情報と距離を設定
+              place['nearest_station'] = nearestStation;
+              distance = nearestStation['distance'];
+              place['distance'] = distance;
+              place['distance_type'] = 'nearest';
+              _logger.d(
+                  'Found nearest station: ${nearestStation['name']} - Distance: ${distance}m');
+            }
+          }
+
+          // 距離情報をログに出力（デバッグ用）
+          _logger.d(
+              'Place: ${place['name']}, Distance: $distance, Radius: $radius');
+
+          // 指定された半径内かどうかをチェック
+          if (distance != null && distance <= radius) {
+            return PlaceResult.fromJson(place);
+          }
+        } catch (e) {
+          _logger.e('Error processing place ${place['name']}: $e');
+        }
+        return null;
+      });
+
+      // nullを除外して結果を返す
+      final results = await Future.wait(futures);
+      final finalResults = results.whereType<PlaceResult>().toList();
+
+      _logger
+          .d('Final results count (within ${radius}m): ${finalResults.length}');
+
+      return finalResults;
+    } catch (e) {
+      _logger.e('検索中にエラーが発生しました: $e');
+      // エラーハンドリングを改善してユーザーにわかりやすいメッセージを表示できるようにする
+      return [];
+    }
   }
 
   Future<Map<String, dynamic>?> _findNearestStation(LatLng location) async {
@@ -228,28 +279,32 @@ class PlacesService {
       '&radius=1000&type=train_station&language=ja&key=$_apiKey',
     );
 
-    final response = await http.get(url);
-    if (response.statusCode == 200) {
-      final json = jsonDecode(response.body);
-      if (json['status'] == 'OK' && json['results'].isNotEmpty) {
-        final station = json['results'][0];
-        final stationLocation = LatLng(
-          station['geometry']['location']['lat'],
-          station['geometry']['location']['lng'],
-        );
+    try {
+      final response = await _retryableGet(url);
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body);
+        if (json['status'] == 'OK' && json['results'].isNotEmpty) {
+          final station = json['results'][0];
+          final stationLocation = LatLng(
+            station['geometry']['location']['lat'],
+            station['geometry']['location']['lng'],
+          );
 
-        final distance = _calculateDistance(
-          location.latitude,
-          location.longitude,
-          stationLocation.latitude,
-          stationLocation.longitude,
-        );
+          final distance = _calculateDistance(
+            location.latitude,
+            location.longitude,
+            stationLocation.latitude,
+            stationLocation.longitude,
+          );
 
-        return {
-          'name': station['name'],
-          'distance': distance,
-        };
+          return {
+            'name': station['name'],
+            'distance': distance,
+          };
+        }
       }
+    } catch (e) {
+      _logger.e('最寄り駅検索中にエラーが発生しました: $e');
     }
     return null;
   }
@@ -279,13 +334,17 @@ class PlacesService {
       '&fields=geometry&language=ja&key=$_apiKey',
     );
 
-    final response = await http.get(url);
-    if (response.statusCode == 200) {
-      final json = jsonDecode(response.body);
-      if (json['status'] == 'OK' && json['candidates'].isNotEmpty) {
-        final location = json['candidates'][0]['geometry']['location'];
-        return LatLng(location['lat'], location['lng']);
+    try {
+      final response = await _retryableGet(url);
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body);
+        if (json['status'] == 'OK' && json['candidates'].isNotEmpty) {
+          final location = json['candidates'][0]['geometry']['location'];
+          return LatLng(location['lat'], location['lng']);
+        }
       }
+    } catch (e) {
+      _logger.e('場所の座標取得中にエラーが発生しました: $e');
     }
     return null;
   }
@@ -303,7 +362,7 @@ class PlacesService {
       );
 
       _logger.d('Searching nearby places at: $lat, $lng');
-      final response = await http.get(url);
+      final response = await _retryableGet(url);
       final data = json.decode(response.body);
 
       if (data['status'] != 'OK') {

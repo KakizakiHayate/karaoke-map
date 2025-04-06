@@ -13,6 +13,7 @@ import 'package:logger/logger.dart';
 import 'screens/search_screen.dart';
 import 'screens/history_screen.dart';
 import 'screens/settings_screen.dart';
+import '../theme/app_theme.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -87,14 +88,21 @@ class _HomeScreenState extends State<HomeScreen> {
   // 初期化時に位置情報を取得して自動検索を行うメソッドを追加
   Future<void> _initializeLocationAndSearch() async {
     try {
+      // 位置情報の権限を取得
       await _getCurrentLocation();
 
-      // 現在位置が取得できた場合
-      if (_userLocation != null) {
-        // 現在位置から検索範囲内を検索（デフォルトは500m）
-        await _performSearchNearby(
-            _userLocation!, int.parse(_getInitialRadius()));
+      // カラオケアイコンをロード
+      await _loadKaraokeIcon();
 
+      // カラオケチェーン店の選択状態をロード
+      await _loadSelectedChains();
+
+      // 位置情報があれば現在地から検索、なければ東京駅から検索
+      if (_userLocation != null) {
+        await _performSearchNearby(
+          _userLocation!,
+          int.parse(_getInitialRadius()),
+        );
         // 地図の表示位置を現在地に設定
         _mapController?.animateCamera(
           CameraUpdate.newLatLngZoom(_userLocation!, _kMapZoomLevel),
@@ -105,8 +113,36 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     } catch (e) {
       _logger.e('自動検索でエラーが発生しました: $e');
-      // エラー時も東京都内を検索
-      await _performSearchInTokyo();
+      // エラー時もUIをフリーズさせないために状態を更新
+      setState(() {
+        _isLoading = false;
+      });
+
+      // エラーメッセージをスナックバーで表示
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('検索中にエラーが発生しました。ネットワーク接続を確認して再試行してください。'),
+            backgroundColor: AppTheme.primaryRed,
+            duration: Duration(seconds: 4),
+            action: SnackBarAction(
+              label: '再試行',
+              textColor: Colors.white,
+              onPressed: () {
+                // 再試行処理
+                _initializeLocationAndSearch();
+              },
+            ),
+          ),
+        );
+      }
+
+      // エラー時も東京都内を検索してみる
+      try {
+        await _performSearchInTokyo();
+      } catch (e) {
+        _logger.e('東京での検索もエラーが発生しました: $e');
+      }
     }
   }
 
@@ -122,38 +158,58 @@ class _HomeScreenState extends State<HomeScreen> {
       _isLoading = true;
     });
 
-    final results = await PlacesService().searchKaraoke(
-      '', // クエリは空で位置情報だけで検索
-      userLocation: location,
-      searchLocation: location,
-      isStation: false,
-      selectedChains: _selectedChains,
-      radius: radius,
-    );
-
-    // マーカーを更新
-    final markers = results.map((place) {
-      return Marker(
-        markerId: MarkerId(place.placeId),
-        position: LatLng(place.lat, place.lng),
-        icon: _karaokeIcon ?? BitmapDescriptor.defaultMarker,
-        onTap: () => _onMarkerTapped(place),
+    try {
+      final results = await PlacesService().searchKaraoke(
+        '', // クエリは空で位置情報だけで検索
+        userLocation: location,
+        searchLocation: location,
+        isStation: false,
+        selectedChains: _selectedChains,
+        radius: radius,
       );
-    }).toSet();
 
-    setState(() {
-      _searchResults = results;
-      _markers.clear();
-      _markers.addAll(markers);
-      _isLoading = false; // 検索完了時にローディング状態をfalseに設定
-    });
+      // マーカーを更新
+      final markers = results.map((place) {
+        return Marker(
+          markerId: MarkerId(place.placeId),
+          position: LatLng(place.lat, place.lng),
+          icon: _karaokeIcon ?? BitmapDescriptor.defaultMarker,
+          onTap: () => _onMarkerTapped(place),
+        );
+      }).toSet();
 
-    // 検索結果がある場合、マップの表示位置を調整
-    if (results.isNotEmpty && _mapController != null) {
-      final bounds = _calculateBounds(results);
-      _mapController!.animateCamera(
-        CameraUpdate.newLatLngBounds(bounds, 50.0),
-      );
+      setState(() {
+        _searchResults = results;
+        _markers.clear();
+        _markers.addAll(markers);
+        _isLoading = false; // 検索完了時にローディング状態をfalseに設定
+      });
+
+      // 検索結果がある場合、マップの表示位置を調整
+      if (results.isNotEmpty && _mapController != null) {
+        final bounds = _calculateBounds(results);
+        _mapController!.animateCamera(
+          CameraUpdate.newLatLngBounds(bounds, 50.0),
+        );
+      }
+    } catch (e) {
+      _logger.e('検索中にエラーが発生しました: $e');
+
+      // エラー時にUIを更新
+      setState(() {
+        _isLoading = false;
+      });
+
+      // エラーメッセージをスナックバーで表示
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('検索中にエラーが発生しました。ネットワーク接続を確認して再試行してください。'),
+            backgroundColor: AppTheme.primaryRed,
+            duration: Duration(seconds: 4),
+          ),
+        );
+      }
     }
   }
 
@@ -251,61 +307,81 @@ class _HomeScreenState extends State<HomeScreen> {
       _isLoading = true;
     });
 
-    // 検索クエリが空の場合は現在位置から検索
-    if (query.isEmpty && _userLocation != null) {
-      await _performSearchNearby(_userLocation!, int.parse(selectedRadius));
-      return;
-    } else if (query.isEmpty) {
-      // 検索クエリが空かつ現在位置もない場合は東京都で検索
-      await _performSearchInTokyo();
-      return;
-    }
-
-    // 検索タイプを判断（駅名かエリア名か）
-    final isStation = query.contains('駅');
-    LatLng? searchLocation;
-
-    if (isStation) {
-      // 駅の座標を取得
-      final stationLocation = await PlacesService().getPlaceLocation(query);
-      if (stationLocation != null) {
-        searchLocation = stationLocation;
+    try {
+      // 検索クエリが空の場合は現在位置から検索
+      if (query.isEmpty && _userLocation != null) {
+        await _performSearchNearby(_userLocation!, int.parse(selectedRadius));
+        return;
+      } else if (query.isEmpty) {
+        // 検索クエリが空かつ現在位置もない場合は東京都で検索
+        await _performSearchInTokyo();
+        return;
       }
-    }
 
-    // 検索実行時に選択されたチェーン店の情報と距離を渡す
-    final results = await PlacesService().searchKaraoke(
-      query,
-      userLocation: _userLocation,
-      searchLocation: searchLocation,
-      isStation: isStation,
-      selectedChains: _selectedChains,
-      radius: int.parse(selectedRadius),
-    );
+      // 検索タイプを判断（駅名かエリア名か）
+      final isStation = query.contains('駅');
+      LatLng? searchLocation;
 
-    // マーカーを更新
-    final markers = results.map((place) {
-      return Marker(
-        markerId: MarkerId(place.placeId),
-        position: LatLng(place.lat, place.lng),
-        icon: _karaokeIcon ?? BitmapDescriptor.defaultMarker,
-        onTap: () => _onMarkerTapped(place),
+      if (isStation) {
+        // 駅の座標を取得
+        final stationLocation = await PlacesService().getPlaceLocation(query);
+        if (stationLocation != null) {
+          searchLocation = stationLocation;
+        }
+      }
+
+      // 検索実行時に選択されたチェーン店の情報と距離を渡す
+      final results = await PlacesService().searchKaraoke(
+        query,
+        userLocation: _userLocation,
+        searchLocation: searchLocation,
+        isStation: isStation,
+        selectedChains: _selectedChains,
+        radius: int.parse(selectedRadius),
       );
-    }).toSet();
 
-    setState(() {
-      _searchResults = results;
-      _markers.clear();
-      _markers.addAll(markers);
-      _isLoading = false; // 検索完了時にローディング状態をfalseに設定
-    });
+      // マーカーを更新
+      final markers = results.map((place) {
+        return Marker(
+          markerId: MarkerId(place.placeId),
+          position: LatLng(place.lat, place.lng),
+          icon: _karaokeIcon ?? BitmapDescriptor.defaultMarker,
+          onTap: () => _onMarkerTapped(place),
+        );
+      }).toSet();
 
-    // 検索結果がある場合、マップの表示位置を調整
-    if (results.isNotEmpty && _mapController != null) {
-      final bounds = _calculateBounds(results);
-      _mapController!.animateCamera(
-        CameraUpdate.newLatLngBounds(bounds, 50.0),
-      );
+      setState(() {
+        _searchResults = results;
+        _markers.clear();
+        _markers.addAll(markers);
+        _isLoading = false; // 検索完了時にローディング状態をfalseに設定
+      });
+
+      // 検索結果がある場合、マップの表示位置を調整
+      if (results.isNotEmpty && _mapController != null) {
+        final bounds = _calculateBounds(results);
+        _mapController!.animateCamera(
+          CameraUpdate.newLatLngBounds(bounds, 50.0),
+        );
+      }
+    } catch (e) {
+      _logger.e('検索中にエラーが発生しました: $e');
+
+      // エラー時にUIを更新
+      setState(() {
+        _isLoading = false;
+      });
+
+      // エラーメッセージをスナックバーで表示
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('検索中にエラーが発生しました。再度お試しください。'),
+            backgroundColor: AppTheme.primaryRed,
+            duration: Duration(seconds: 4),
+          ),
+        );
+      }
     }
   }
 
