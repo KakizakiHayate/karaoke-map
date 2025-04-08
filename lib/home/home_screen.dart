@@ -11,7 +11,7 @@ import 'widgets/place_info_window.dart';
 import '../services/karaoke_chain_service.dart';
 import 'package:logger/logger.dart';
 import 'screens/search_screen.dart';
-import 'screens/history_screen.dart';
+import 'screens/saved_places_screen.dart';
 import 'screens/settings_screen.dart';
 import '../theme/app_theme.dart';
 
@@ -45,7 +45,7 @@ class _HomeScreenState extends State<HomeScreen> {
   // 表示する画面のリスト
   final List<Widget> _screens = [
     const SearchScreen(),
-    const HistoryScreen(),
+    const SavedPlacesScreen(),
     const SettingsScreen(),
   ];
 
@@ -71,6 +71,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // 現在選択されている検索範囲
   String _currentRadius = '500';
+
+  // SearchResultModalWidgetのGlobalKeyを追加
+  final GlobalKey<SearchResultModalWidgetState> _searchResultModalKey =
+      GlobalKey<SearchResultModalWidgetState>();
+
+  // PlaceInfoWindowのGlobalKeyを追加
+  final GlobalKey<PlaceInfoWindowState> _placeInfoWindowKey =
+      GlobalKey<PlaceInfoWindowState>();
 
   @override
   void initState() {
@@ -121,18 +129,10 @@ class _HomeScreenState extends State<HomeScreen> {
       // エラーメッセージをスナックバーで表示
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          const SnackBar(
             content: Text('検索中にエラーが発生しました。ネットワーク接続を確認して再試行してください。'),
             backgroundColor: AppTheme.primaryRed,
             duration: Duration(seconds: 4),
-            action: SnackBarAction(
-              label: '再試行',
-              textColor: Colors.white,
-              onPressed: () {
-                // 再試行処理
-                _initializeLocationAndSearch();
-              },
-            ),
           ),
         );
       }
@@ -203,7 +203,7 @@ class _HomeScreenState extends State<HomeScreen> {
       // エラーメッセージをスナックバーで表示
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          const SnackBar(
             content: Text('検索中にエラーが発生しました。ネットワーク接続を確認して再試行してください。'),
             backgroundColor: AppTheme.primaryRed,
             duration: Duration(seconds: 4),
@@ -375,8 +375,8 @@ class _HomeScreenState extends State<HomeScreen> {
       // エラーメッセージをスナックバーで表示
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('検索中にエラーが発生しました。再度お試しください。'),
+          const SnackBar(
+            content: Text('検索中にエラーが発生しました。ネットワーク接続を確認して再試行してください。'),
             backgroundColor: AppTheme.primaryRed,
             duration: Duration(seconds: 4),
           ),
@@ -431,6 +431,15 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // 保存状態が変更された時のコールバック
+  void _onSavedStateChanged(String placeId, bool isSaved) {
+    // PlaceInfoWindowの保存状態を更新
+    _placeInfoWindowKey.currentState?.updateSavedState(placeId, isSaved);
+
+    // SearchResultModalWidgetの保存状態を更新
+    _searchResultModalKey.currentState?.updateSavedState(placeId, isSaved);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -476,9 +485,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 right: 0,
                 bottom: MediaQuery.of(context).size.height * _kMinModalSize + 8,
                 child: PlaceInfoWindow(
+                  key: _placeInfoWindowKey,
                   places: _searchResults,
                   selectedIndex: _selectedPlaceIndex,
                   onPageChanged: _onPageChanged,
+                  onSavedStateChanged: _onSavedStateChanged,
                 ),
               ),
             DraggableScrollableSheet(
@@ -492,10 +503,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 return Material(
                   elevation: 8,
                   child: SearchResultModalWidget(
+                    key: _searchResultModalKey,
                     scrollController: scrollController,
                     searchResults: _searchResults,
                     isLoading: _isLoading,
                     searchRadius: _currentRadius,
+                    onSavedStateChanged: _onSavedStateChanged,
                   ),
                 );
               },
