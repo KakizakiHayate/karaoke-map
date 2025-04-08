@@ -20,8 +20,8 @@ class BottomNavigationWidget extends StatelessWidget {
           label: '検索',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.history),
-          label: '履歴',
+          icon: Icon(Icons.bookmark),
+          label: '保存済み',
         ),
         BottomNavigationBarItem(
           icon: Icon(Icons.settings),

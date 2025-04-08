@@ -1,20 +1,133 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../models/place_result.dart';
 import '../../services/places_service.dart';
+import '../../services/saved_place_service.dart';
+import '../../app_state.dart';
 import '../../theme/app_theme.dart';
 
-class PlaceInfoWindow extends StatelessWidget {
+typedef SavedStateChangedCallback = void Function(String placeId, bool isSaved);
+
+class PlaceInfoWindow extends StatefulWidget {
   final List<PlaceResult> places;
   final int selectedIndex;
   final Function(int) onPageChanged;
+  final SavedStateChangedCallback? onSavedStateChanged;
 
   const PlaceInfoWindow({
     super.key,
     required this.places,
     required this.selectedIndex,
     required this.onPageChanged,
+    this.onSavedStateChanged,
   });
+
+  @override
+  PlaceInfoWindowState createState() => PlaceInfoWindowState();
+}
+
+class PlaceInfoWindowState extends State<PlaceInfoWindow> {
+  final SavedPlaceService _savedPlaceService = SavedPlaceService();
+  final Set<String> _savedPlaceIds = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _checkSavedPlaces();
+  }
+
+  @override
+  void didUpdateWidget(PlaceInfoWindow oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // 表示される場所が変更された場合、保存状態を再確認
+    if (widget.places != oldWidget.places ||
+        widget.selectedIndex != oldWidget.selectedIndex) {
+      _checkSavedPlaces();
+    }
+  }
+
+  // 表示中の場所が保存済みかどうか確認する
+  Future<void> _checkSavedPlaces() async {
+    final userId = context.read<AppState>().userId;
+    if (userId == null) return;
+
+    _savedPlaceIds.clear();
+
+    for (final place in widget.places) {
+      final isSaved =
+          await _savedPlaceService.isPlaceSaved(userId, place.placeId);
+      if (isSaved) {
+        setState(() {
+          _savedPlaceIds.add(place.placeId);
+        });
+      }
+    }
+  }
+
+  // 保存状態を外部から更新するメソッド
+  void updateSavedState(String placeId, bool isSaved) {
+    if (isSaved && !_savedPlaceIds.contains(placeId)) {
+      setState(() {
+        _savedPlaceIds.add(placeId);
+      });
+    } else if (!isSaved && _savedPlaceIds.contains(placeId)) {
+      setState(() {
+        _savedPlaceIds.remove(placeId);
+      });
+    }
+  }
+
+  // 場所を保存または削除する
+  Future<void> _toggleSavePlace(PlaceResult place) async {
+    final userId = context.read<AppState>().userId;
+    if (userId == null) return;
+
+    final isSaved = _savedPlaceIds.contains(place.placeId);
+
+    if (isSaved) {
+      // 削除処理
+      final success =
+          await _savedPlaceService.deleteSavedPlace(userId, place.placeId);
+      if (success) {
+        setState(() {
+          _savedPlaceIds.remove(place.placeId);
+        });
+
+        // 保存状態の変更を通知
+        widget.onSavedStateChanged?.call(place.placeId, false);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('保存済みリストから削除しました'),
+              backgroundColor: AppTheme.primaryBlue,
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+    } else {
+      // 保存処理
+      await _savedPlaceService.savePlace(userId, place);
+      setState(() {
+        _savedPlaceIds.add(place.placeId);
+      });
+
+      // 保存状態の変更を通知
+      widget.onSavedStateChanged?.call(place.placeId, true);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('保存済みリストに追加しました'),
+            backgroundColor: AppTheme.primaryBlue,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -23,12 +136,14 @@ class PlaceInfoWindow extends StatelessWidget {
       child: PageView.builder(
         controller: PageController(
           viewportFraction: 0.90, // ビューポートの90%を表示
-          initialPage: selectedIndex,
+          initialPage: widget.selectedIndex,
         ),
-        onPageChanged: onPageChanged,
-        itemCount: places.length,
+        onPageChanged: widget.onPageChanged,
+        itemCount: widget.places.length,
         itemBuilder: (context, index) {
-          final place = places[index];
+          final place = widget.places[index];
+          final isSaved = _savedPlaceIds.contains(place.placeId);
+
           return Container(
             margin: const EdgeInsets.symmetric(horizontal: 8.0),
             decoration: BoxDecoration(
@@ -92,15 +207,34 @@ class PlaceInfoWindow extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // 店舗名
-                        Text(
-                          place.name,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                        // 店舗名と保存アイコン
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                place.name,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            // 保存状態アイコン
+                            InkWell(
+                              onTap: () => _toggleSavePlace(place),
+                              child: Icon(
+                                isSaved
+                                    ? Icons.bookmark
+                                    : Icons.bookmark_border,
+                                size: 22,
+                                color: isSaved
+                                    ? AppTheme.primaryBlue
+                                    : Colors.grey,
+                              ),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 4),
 
@@ -221,6 +355,14 @@ class PlaceInfoWindow extends StatelessWidget {
                               icon: Icons.directions,
                               color: Colors.blue,
                               onTap: () => _openInMaps(place),
+                            ),
+                            _buildActionButton(
+                              context,
+                              icon: isSaved
+                                  ? Icons.bookmark
+                                  : Icons.bookmark_border,
+                              color: AppTheme.primaryBlue,
+                              onTap: () => _toggleSavePlace(place),
                             ),
                             if (place.website != null)
                               _buildActionButton(
