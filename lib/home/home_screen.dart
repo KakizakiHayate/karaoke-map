@@ -239,7 +239,9 @@ class _HomeScreenState extends State<HomeScreen> {
     // 権限がある場合だけ位置情報取得を試みる
     try {
       final position = await Geolocator.getCurrentPosition(
-        timeLimit: const Duration(seconds: 10), // タイムアウトを10秒に設定
+        locationSettings: const LocationSettings(
+          timeLimit: Duration(seconds: 10),
+        ),
       );
       setState(() {
         _userLocation = LatLng(position.latitude, position.longitude);
