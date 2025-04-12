@@ -2,6 +2,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import '../models/karaoke_chain.dart';
 import '../models/user_chain_setting.dart';
+import '../models/saved_place.dart';
 import 'package:logger/logger.dart';
 
 class DatabaseHelper {
@@ -29,14 +30,39 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: _createDB,
+      onUpgrade: _onUpgrade,
       onConfigure: _onConfigure,
     );
   }
 
   Future<void> _onConfigure(Database db) async {
     await db.execute('PRAGMA foreign_keys = ON');
+  }
+
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await db.execute('''
+        CREATE TABLE saved_places (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          place_id TEXT NOT NULL,
+          name TEXT NOT NULL,
+          address TEXT NOT NULL,
+          photo_reference TEXT,
+          rating REAL NOT NULL,
+          user_ratings_total INTEGER NOT NULL,
+          lat REAL NOT NULL,
+          lng REAL NOT NULL,
+          phone_number TEXT,
+          website TEXT,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (user_id) REFERENCES users(id),
+          UNIQUE(user_id, place_id)
+        )
+      ''');
+    }
   }
 
   Future<void> _createDB(Database db, int version) async {
@@ -87,6 +113,27 @@ class DatabaseHelper {
       )
     ''');
 
+    // 保存済みテーブル
+    await db.execute('''
+      CREATE TABLE saved_places (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        place_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        address TEXT NOT NULL,
+        photo_reference TEXT,
+        rating REAL NOT NULL,
+        user_ratings_total INTEGER NOT NULL,
+        lat REAL NOT NULL,
+        lng REAL NOT NULL,
+        phone_number TEXT,
+        website TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id),
+        UNIQUE(user_id, place_id)
+      )
+    ''');
+
     // 初期データの挿入
     await _insertInitialData(db);
   }
@@ -119,6 +166,54 @@ class DatabaseHelper {
       });
     }
     await batch.commit();
+  }
+
+  // 保存済みのCRUD操作
+  Future<SavedPlace> createSavedPlace(SavedPlace savedPlace) async {
+    final db = await database;
+    final id = await db.insert('saved_places', savedPlace.toMap());
+    return savedPlace.copyWith(id: id);
+  }
+
+  Future<SavedPlace?> readSavedPlace(int userId, String placeId) async {
+    final db = await database;
+    final maps = await db.query(
+      'saved_places',
+      where: 'user_id = ? AND place_id = ?',
+      whereArgs: [userId, placeId],
+    );
+
+    if (maps.isNotEmpty) {
+      return SavedPlace.fromMap(maps.first);
+    }
+    return null;
+  }
+
+  Future<bool> isSavedPlace(int userId, String placeId) async {
+    final savedPlace = await readSavedPlace(userId, placeId);
+    return savedPlace != null;
+  }
+
+  Future<List<SavedPlace>> readUserSavedPlaces(int userId) async {
+    final db = await database;
+    const orderBy = 'created_at DESC';
+    final result = await db.query(
+      'saved_places',
+      where: 'user_id = ?',
+      whereArgs: [userId],
+      orderBy: orderBy,
+    );
+
+    return result.map((json) => SavedPlace.fromMap(json)).toList();
+  }
+
+  Future<int> deleteSavedPlace(int userId, String placeId) async {
+    final db = await database;
+    return await db.delete(
+      'saved_places',
+      where: 'user_id = ? AND place_id = ?',
+      whereArgs: [userId, placeId],
+    );
   }
 
   // カラオケチェーン店のCRUD操作

@@ -1,15 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../models/place_result.dart';
 import '../../services/places_service.dart';
+import '../../services/saved_place_service.dart';
+import '../../app_state.dart';
 import '../../theme/app_theme.dart';
+
+typedef SavedStateChangedCallback = void Function(String placeId, bool isSaved);
 
 class SearchResultModalWidget extends StatefulWidget {
   final ScrollController scrollController;
   final List<PlaceResult> searchResults;
   final bool isLoading;
   final String searchRadius;
+  final SavedStateChangedCallback? onSavedStateChanged;
 
   const SearchResultModalWidget({
     super.key,
@@ -17,14 +23,115 @@ class SearchResultModalWidget extends StatefulWidget {
     required this.searchResults,
     required this.isLoading,
     required this.searchRadius,
+    this.onSavedStateChanged,
   });
 
   @override
-  State<SearchResultModalWidget> createState() =>
-      _SearchResultModalWidgetState();
+  SearchResultModalWidgetState createState() => SearchResultModalWidgetState();
 }
 
-class _SearchResultModalWidgetState extends State<SearchResultModalWidget> {
+class SearchResultModalWidgetState extends State<SearchResultModalWidget> {
+  final SavedPlaceService _savedPlaceService = SavedPlaceService();
+  // 保存済みの場所のIDを管理するためのセット
+  final Set<String> _savedPlaceIds = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _checkSavedPlaces();
+  }
+
+  @override
+  void didUpdateWidget(SearchResultModalWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // 検索結果が変更された場合、保存状態をリロード
+    if (widget.searchResults != oldWidget.searchResults) {
+      _checkSavedPlaces();
+    }
+  }
+
+  // 表示中の場所が保存済みかどうかを確認する
+  Future<void> _checkSavedPlaces() async {
+    final userId = context.read<AppState>().userId;
+    if (userId == null) return;
+
+    _savedPlaceIds.clear();
+
+    for (final place in widget.searchResults) {
+      final isSaved =
+          await _savedPlaceService.isPlaceSaved(userId, place.placeId);
+      if (isSaved) {
+        setState(() {
+          _savedPlaceIds.add(place.placeId);
+        });
+      }
+    }
+  }
+
+  // 保存状態を外部から更新するメソッド
+  void updateSavedState(String placeId, bool isSaved) {
+    if (isSaved && !_savedPlaceIds.contains(placeId)) {
+      setState(() {
+        _savedPlaceIds.add(placeId);
+      });
+    } else if (!isSaved && _savedPlaceIds.contains(placeId)) {
+      setState(() {
+        _savedPlaceIds.remove(placeId);
+      });
+    }
+  }
+
+  // 場所を保存または削除する
+  Future<void> _toggleSavePlace(PlaceResult place) async {
+    final userId = context.read<AppState>().userId;
+    if (userId == null) return;
+
+    final isSaved = _savedPlaceIds.contains(place.placeId);
+
+    if (isSaved) {
+      // 削除処理
+      final success =
+          await _savedPlaceService.deleteSavedPlace(userId, place.placeId);
+      if (success) {
+        setState(() {
+          _savedPlaceIds.remove(place.placeId);
+        });
+
+        // 保存状態の変更を通知
+        widget.onSavedStateChanged?.call(place.placeId, false);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('保存済みリストから削除しました'),
+              backgroundColor: AppTheme.primaryBlue,
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+    } else {
+      // 保存処理
+      await _savedPlaceService.savePlace(userId, place);
+      setState(() {
+        _savedPlaceIds.add(place.placeId);
+      });
+
+      // 保存状態の変更を通知
+      widget.onSavedStateChanged?.call(place.placeId, true);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('保存済みリストに追加しました'),
+            backgroundColor: AppTheme.primaryBlue,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -112,6 +219,8 @@ class _SearchResultModalWidgetState extends State<SearchResultModalWidget> {
   }
 
   Widget _buildResultCard(BuildContext context, PlaceResult result) {
+    final isSaved = _savedPlaceIds.contains(result.placeId);
+
     return Card(
       margin: const EdgeInsets.all(8),
       elevation: 2,
@@ -284,6 +393,26 @@ class _SearchResultModalWidgetState extends State<SearchResultModalWidget> {
                   ),
                 ),
                 const SizedBox(width: 8),
+                OutlinedButton.icon(
+                  icon: Icon(
+                    isSaved ? Icons.bookmark : Icons.bookmark_border,
+                    color: AppTheme.primaryBlue,
+                  ),
+                  label: Text(
+                    isSaved ? '保存済み' : '保存する',
+                    style: const TextStyle(color: AppTheme.primaryBlue),
+                  ),
+                  onPressed: () => _toggleSavePlace(result),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: AppTheme.primaryBlue),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
                 if (result.website != null)
                   OutlinedButton.icon(
                     icon:
@@ -344,13 +473,20 @@ class _SearchResultModalWidgetState extends State<SearchResultModalWidget> {
       'https://www.google.com/maps/search/?api=1&query=${place.lat},${place.lng}',
     );
     if (await canLaunchUrl(url)) {
-      await launchUrl(url);
+      await launchUrl(
+        url,
+        mode: LaunchMode.externalApplication,
+      );
     }
   }
 
   Future<void> _launchUrl(String url) async {
-    if (await canLaunchUrl(Uri.parse(url))) {
-      await launchUrl(Uri.parse(url));
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(
+        uri,
+        mode: LaunchMode.inAppWebView,
+      );
     }
   }
 
@@ -362,9 +498,12 @@ class _SearchResultModalWidgetState extends State<SearchResultModalWidget> {
   }
 
   Future<void> _callPhone(String phoneNumber) async {
-    final url = 'tel:$phoneNumber';
-    if (await canLaunchUrl(Uri.parse(url))) {
-      await launchUrl(Uri.parse(url));
+    final uri = Uri.parse('tel:$phoneNumber');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
     }
   }
 }
