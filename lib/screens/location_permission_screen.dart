@@ -6,9 +6,9 @@ class LocationPermissionScreen extends StatelessWidget {
   final VoidCallback onPermissionGranted;
 
   const LocationPermissionScreen({
-    Key? key,
+    super.key,
     required this.onPermissionGranted,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -21,7 +21,7 @@ class LocationPermissionScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // アプリロゴ/アイコン
-              Icon(
+              const Icon(
                 Icons.mic, // カラオケのマイクアイコン
                 size: 80,
                 color: AppTheme.primaryBlue,
@@ -42,7 +42,7 @@ class LocationPermissionScreen extends StatelessWidget {
               const SizedBox(height: 40),
 
               // 位置情報アイコン
-              Icon(
+              const Icon(
                 Icons.location_on,
                 size: 60,
                 color: AppTheme.primaryBlue,
@@ -69,9 +69,9 @@ class LocationPermissionScreen extends StatelessWidget {
                   color: Colors.grey[100],
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Column(
+                child: const Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
+                  children: [
                     _BenefitItem(
                       icon: Icons.near_me,
                       text: '現在地から近いお店を検索',
@@ -151,10 +151,9 @@ class _BenefitItem extends StatelessWidget {
   final String text;
 
   const _BenefitItem({
-    Key? key,
     required this.icon,
     required this.text,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
