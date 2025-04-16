@@ -1,4 +1,4 @@
-package com.example.karaoke_map
+package com.hayate.dev.karaoke_map
 
 import io.flutter.embedding.android.FlutterActivity
 

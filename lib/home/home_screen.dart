@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../models/place_result.dart';
+import '../../models/sample_places.dart';
+import '../../app_state.dart';
+import 'package:provider/provider.dart';
 import 'widgets/search_header_widget.dart';
 import 'widgets/map_widget.dart';
 import 'widgets/search_result_modal_widget.dart';
@@ -28,11 +31,18 @@ class _HomeScreenState extends State<HomeScreen> {
   static const double _kMiddleModalSize = 0.45;
   static const double _kMapZoomLevel = 14.0;
   static const LatLng _kTokyoStationLocation = LatLng(35.6812, 139.7671);
+  static const String _debugPassword = 'karaoke123'; // デバッグモード用パスワード
 
   final GlobalKey _headerKey = GlobalKey();
   double _maxModalSize = _kDefaultMaxModalSize;
   int _selectedIndex = 0;
   final Logger _logger = Logger();
+
+  // 設定タブタップのカウントと時間
+  int _settingsTabTapCount = 0;
+  DateTime? _lastSettingsTapTime;
+  static const int _requiredTapCount = 5; // デバッグモード表示に必要なタップ回数
+  static const Duration _tapTimeWindow = Duration(seconds: 3); // タップが有効な時間枠
 
   final TextEditingController _searchController = TextEditingController();
   List<PlaceResult> _searchResults = [];
@@ -265,6 +275,32 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _onItemTapped(int index) {
+    final now = DateTime.now();
+
+    // 設定タブ（index=2）をタップした場合
+    if (index == 2) {
+      // 前回のタップから3秒以内なら連続タップとみなす
+      if (_lastSettingsTapTime != null &&
+          now.difference(_lastSettingsTapTime!) < _tapTimeWindow) {
+        _settingsTabTapCount++;
+
+        // 5回連続でタップした場合
+        if (_settingsTabTapCount == _requiredTapCount) {
+          _showPasswordDialog();
+          _settingsTabTapCount = 0; // カウントをリセット
+        }
+      } else {
+        // 時間が空きすぎていた場合はカウントをリセット
+        _settingsTabTapCount = 1;
+      }
+
+      _lastSettingsTapTime = now;
+    } else {
+      // 設定タブ以外をタップした場合はカウントをリセット
+      _settingsTabTapCount = 0;
+      _lastSettingsTapTime = null;
+    }
+
     setState(() {
       _selectedIndex = index;
     });
@@ -310,6 +346,53 @@ class _HomeScreenState extends State<HomeScreen> {
     });
 
     try {
+      // デバッグモードの場合、サンプルデータを表示
+      final appState = Provider.of<AppState>(context, listen: false);
+      if (appState.isDebugMode) {
+        // サンプルデータの取得
+        final sampleResults = SamplePlaces.getSamplePlaces();
+
+        // マーカーを更新
+        final markers = sampleResults.map((place) {
+          return Marker(
+            markerId: MarkerId(place.placeId),
+            position: LatLng(place.lat, place.lng),
+            icon: _karaokeIcon ?? BitmapDescriptor.defaultMarker,
+            onTap: () => _onMarkerTapped(place),
+          );
+        }).toSet();
+
+        setState(() {
+          _searchResults = sampleResults;
+          _markers.clear();
+          _markers.addAll(markers);
+          _isLoading = false; // 検索完了時にローディング状態をfalseに設定
+        });
+
+        // 検索結果の境界を計算してマップを調整
+        if (sampleResults.isNotEmpty && _mapController != null) {
+          final bounds = _calculateBounds(sampleResults);
+          _mapController!.animateCamera(
+            CameraUpdate.newLatLngBounds(bounds, 50.0),
+          );
+        }
+
+        // スナックバーでデバッグモードであることを表示
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('デバッグモード: サンプルデータを表示しています'),
+              backgroundColor: Colors.deepPurple,
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+
+        // デバッグモードの場合は早期リターン
+        return;
+      }
+
+      // 通常の検索フロー（既存のコード）
       // 検索クエリが空の場合は現在位置から検索
       if (query.isEmpty && _userLocation != null) {
         await _performSearchNearby(_userLocation!, int.parse(selectedRadius));
@@ -440,6 +523,69 @@ class _HomeScreenState extends State<HomeScreen> {
 
     // SearchResultModalWidgetの保存状態を更新
     _searchResultModalKey.currentState?.updateSavedState(placeId, isSaved);
+  }
+
+  // パスワード入力ダイアログを表示するメソッド
+  void _showPasswordDialog() {
+    final TextEditingController passwordController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('デバッグモード'),
+          content: TextField(
+            controller: passwordController,
+            obscureText: true,
+            decoration: const InputDecoration(
+              hintText: 'パスワードを入力',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('キャンセル'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (passwordController.text == _debugPassword) {
+                  // デバッグモードを有効化
+                  Provider.of<AppState>(context, listen: false)
+                      .toggleDebugMode(true);
+                  Navigator.of(context).pop();
+
+                  // 成功メッセージを表示
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('デバッグモードが有効になりました'),
+                      backgroundColor: Colors.green,
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                } else {
+                  // エラーメッセージを表示
+                  Navigator.of(context).pop();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('パスワードが正しくありません'),
+                      backgroundColor: AppTheme.primaryRed,
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryBlue,
+              ),
+              child: const Text('確認'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
