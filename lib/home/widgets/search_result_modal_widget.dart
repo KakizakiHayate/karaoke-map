@@ -235,21 +235,28 @@ class SearchResultModalWidgetState extends State<SearchResultModalWidget> {
             ClipRRect(
               borderRadius:
                   const BorderRadius.vertical(top: Radius.circular(12)),
-              child: Image.network(
-                PlacesService().getPhotoUrl(result.photoReference!),
-                height: 160,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    height: 100,
-                    color: AppTheme.primaryBlue.withOpacity(0.1),
-                    child: const Center(
-                      child: Icon(Icons.image_not_supported),
+              child: result.photoReference!.startsWith('assets/')
+                  ? Image.asset(
+                      result.photoReference!,
+                      height: 160,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                    )
+                  : Image.network(
+                      PlacesService().getPhotoUrl(result.photoReference!),
+                      height: 160,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          height: 100,
+                          color: AppTheme.primaryBlue.withOpacity(0.1),
+                          child: const Center(
+                            child: Icon(Icons.image_not_supported),
+                          ),
+                        );
+                      },
                     ),
-                  );
-                },
-              ),
             ),
 
           // 基本情報
