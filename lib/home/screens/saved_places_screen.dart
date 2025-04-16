@@ -152,21 +152,28 @@ class _SavedPlacesScreenState extends State<SavedPlacesScreen> {
             ClipRRect(
               borderRadius:
                   const BorderRadius.vertical(top: Radius.circular(12)),
-              child: Image.network(
-                _placesService.getPhotoUrl(place.photoReference!),
-                height: 160,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    height: 100,
-                    color: AppTheme.primaryBlue.withOpacity(0.1),
-                    child: const Center(
-                      child: Icon(Icons.image_not_supported),
+              child: place.photoReference!.startsWith('assets/')
+                  ? Image.asset(
+                      place.photoReference!,
+                      height: 160,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                    )
+                  : Image.network(
+                      _placesService.getPhotoUrl(place.photoReference!),
+                      height: 160,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          height: 100,
+                          color: AppTheme.primaryBlue.withOpacity(0.1),
+                          child: const Center(
+                            child: Icon(Icons.image_not_supported),
+                          ),
+                        );
+                      },
                     ),
-                  );
-                },
-              ),
             ),
           Padding(
             padding: const EdgeInsets.all(16),

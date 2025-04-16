@@ -349,8 +349,32 @@ class _HomeScreenState extends State<HomeScreen> {
       // デバッグモードの場合、サンプルデータを表示
       final appState = Provider.of<AppState>(context, listen: false);
       if (appState.isDebugMode) {
-        // サンプルデータの取得
-        final sampleResults = SamplePlaces.getSamplePlaces();
+        // クエリを確認して、駅名検索かどうかを判断
+        final isStationSearch = query.contains('駅');
+        List<PlaceResult> sampleResults;
+
+        if (isStationSearch) {
+          // 駅名検索の場合は駅用のサンプルデータを使用
+          sampleResults = SamplePlaces.getStationSamplePlaces(query);
+
+          // 検索クエリを表示してデバッグ情報を提供
+          _logger.d('駅名検索: $query');
+        } else if (query.isNotEmpty) {
+          // エリア検索の場合も通常のサンプルデータ
+          sampleResults = SamplePlaces.getSamplePlaces();
+          // 検索範囲に応じて、距離の近いデータだけにフィルタリング
+          final radius = int.parse(selectedRadius);
+          sampleResults = sampleResults
+              .where((place) =>
+                  place.distance != null && place.distance! <= radius)
+              .toList();
+
+          _logger.d('エリア検索: $query (半径: ${selectedRadius}m)');
+        } else {
+          // クエリが空の場合は全サンプルデータ
+          sampleResults = SamplePlaces.getSamplePlaces();
+          _logger.d('現在地周辺検索 (半径: ${selectedRadius}m)');
+        }
 
         // マーカーを更新
         final markers = sampleResults.map((place) {
@@ -374,17 +398,6 @@ class _HomeScreenState extends State<HomeScreen> {
           final bounds = _calculateBounds(sampleResults);
           _mapController!.animateCamera(
             CameraUpdate.newLatLngBounds(bounds, 50.0),
-          );
-        }
-
-        // スナックバーでデバッグモードであることを表示
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('デバッグモード: サンプルデータを表示しています'),
-              backgroundColor: Colors.deepPurple,
-              duration: Duration(seconds: 2),
-            ),
           );
         }
 

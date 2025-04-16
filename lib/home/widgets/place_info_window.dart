@@ -170,19 +170,25 @@ class PlaceInfoWindowState extends State<PlaceInfoWindow> {
                     child: SizedBox(
                       width: 120,
                       height: 180,
-                      child: Image.network(
-                        PlacesService().getPhotoUrl(place.photoReference!),
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            color: Colors.grey[200],
-                            child: const Center(
-                              child: Icon(Icons.music_note,
-                                  size: 40, color: AppTheme.primaryRed),
+                      child: place.photoReference!.startsWith('assets/')
+                          ? Image.asset(
+                              place.photoReference!,
+                              fit: BoxFit.cover,
+                            )
+                          : Image.network(
+                              PlacesService()
+                                  .getPhotoUrl(place.photoReference!),
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Container(
+                                  color: Colors.grey[200],
+                                  child: const Center(
+                                    child: Icon(Icons.music_note,
+                                        size: 40, color: AppTheme.primaryRed),
+                                  ),
+                                );
+                              },
                             ),
-                          );
-                        },
-                      ),
                     ),
                   )
                 else
