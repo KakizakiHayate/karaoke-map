@@ -32,6 +32,7 @@
 		<string>mailto</string>
 		<string>sms</string>
 		<string>maps</string>
+		<string>itms-apps</string>
 	</array>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>

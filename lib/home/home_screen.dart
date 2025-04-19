@@ -9,6 +9,7 @@ import '../services/places_service.dart';
 import 'package:geolocator/geolocator.dart';
 import 'widgets/place_info_window.dart';
 import '../services/karaoke_chain_service.dart';
+import '../services/review_service.dart';
 import 'package:logger/logger.dart';
 import 'screens/search_screen.dart';
 import 'screens/saved_places_screen.dart';
@@ -80,6 +81,9 @@ class _HomeScreenState extends State<HomeScreen> {
   final GlobalKey<PlaceInfoWindowState> _placeInfoWindowKey =
       GlobalKey<PlaceInfoWindowState>();
 
+  // ReviewServiceを追加
+  final ReviewService _reviewService = ReviewService();
+
   @override
   void initState() {
     super.initState();
@@ -87,6 +91,11 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadSelectedChains(); // チェーン店の選択状態を読み込む
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _updateMaxModalSize();
+    });
+
+    // 現在の検索回数をログに出力（デバッグ用）
+    _reviewService.getSearchCount().then((count) {
+      _logger.d('現在の検索回数: $count回');
     });
 
     // 現在位置を取得して自動検索を実行
@@ -167,6 +176,9 @@ class _HomeScreenState extends State<HomeScreen> {
         selectedChains: _selectedChains,
         radius: radius,
       );
+
+      // 検索回数をインクリメント
+      await _reviewService.incrementSearchCount();
 
       // マーカーを更新
       final markers = results.map((place) {
@@ -341,6 +353,9 @@ class _HomeScreenState extends State<HomeScreen> {
         selectedChains: _selectedChains,
         radius: int.parse(selectedRadius),
       );
+
+      // 検索回数をインクリメント
+      await _reviewService.incrementSearchCount();
 
       // マーカーを更新
       final markers = results.map((place) {
