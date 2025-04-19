@@ -3,6 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import '../../theme/app_theme.dart';
+import '../../services/review_service.dart';
 import '../../app_state.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -15,7 +16,17 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   String _appVersion = '';
   bool _isLoading = true;
-  int _titleTapCount = 0; // タイトルがタップされた回数
+  int _searchCount = 0;
+  final ReviewService _reviewService = ReviewService();
+
+  // 開発者メニューの表示状態
+  bool _showDeveloperMenu = false;
+
+  // タップカウンターを追加（7回タップで開発者メニューを表示）
+  int _versionTapCount = 0;
+
+  // タイトルがタップされた回数
+  int _titleTapCount = 0;
   static const int _requiredTapCount = 5; // デバッグモード表示に必要なタップ回数
   static const String _debugPassword = 'karaoke123'; // デバッグモード用パスワード
 
@@ -23,6 +34,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void initState() {
     super.initState();
     _loadAppVersion();
+    _loadSearchCount();
   }
 
   Future<void> _loadAppVersion() async {
@@ -37,6 +49,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _appVersion = '取得できませんでした';
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _loadSearchCount() async {
+    final count = await _reviewService.getSearchCount();
+    setState(() {
+      _searchCount = count;
+    });
+  }
+
+  void _onVersionTap() {
+    _versionTapCount++;
+    if (_versionTapCount >= 7) {
+      setState(() {
+        _showDeveloperMenu = !_showDeveloperMenu;
+        _versionTapCount = 0;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content:
+              Text(_showDeveloperMenu ? '開発者モードを有効化しました' : '開発者モードを無効化しました'),
+          duration: const Duration(seconds: 1),
+        ),
+      );
     }
   }
 
@@ -123,6 +160,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  Future<void> _resetSearchCount() async {
+    await _reviewService.resetSearchCount();
+    await _loadSearchCount();
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('検索回数をリセットしました'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  Future<void> _showAppReview() async {
+    await _reviewService.forceRequestReview();
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDebugMode = Provider.of<AppState>(context).isDebugMode;
@@ -155,6 +210,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       color: AppTheme.primaryBlue),
                   title: const Text('アプリバージョン'),
                   subtitle: Text(_appVersion),
+                  onTap: _onVersionTap,
                 ),
 
                 // プライバシーポリシー
@@ -183,6 +239,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                   onTap: () => _contactUs(),
                 ),
+
+                // 開発者メニュー（隠し機能）
+                if (_showDeveloperMenu) ...[
+                  _buildSectionHeader('開発者メニュー'),
+
+                  // 検索回数表示
+                  ListTile(
+                    leading: const Icon(Icons.search, color: Colors.orange),
+                    title: const Text('現在の検索回数'),
+                    subtitle: Text('$_searchCount回'),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.refresh),
+                      onPressed: _loadSearchCount,
+                    ),
+                  ),
+
+                  // 検索回数リセット
+                  ListTile(
+                    leading:
+                        const Icon(Icons.delete_forever, color: Colors.red),
+                    title: const Text('検索回数をリセット'),
+                    onTap: _resetSearchCount,
+                  ),
+
+                  // レビューダイアログ表示テスト
+                  ListTile(
+                    leading: const Icon(Icons.star, color: Colors.amber),
+                    title: const Text('レビューダイアログをテスト表示'),
+                    onTap: _showAppReview,
+                  ),
+                ],
 
                 // デバッグモードが有効の場合のみデバッグセクションを表示
                 if (isDebugMode) ...[
