@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:provider/provider.dart';
 import '../../theme/app_theme.dart';
 import '../../services/review_service.dart';
+import '../../app_state.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -22,6 +24,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   // タップカウンターを追加（7回タップで開発者メニューを表示）
   int _versionTapCount = 0;
+
+  // タイトルがタップされた回数
+  int _titleTapCount = 0;
+  static const int _requiredTapCount = 5; // デバッグモード表示に必要なタップ回数
+  static const String _debugPassword = 'karaoke123'; // デバッグモード用パスワード
 
   @override
   void initState() {
@@ -70,6 +77,89 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  // タイトルがタップされたときの処理
+  void _handleTitleTap() {
+    setState(() {
+      _titleTapCount++;
+    });
+
+    // 5回タップされたらパスワードダイアログを表示
+    if (_titleTapCount == _requiredTapCount) {
+      _showPasswordDialog();
+      // カウントをリセット
+      Future.delayed(const Duration(seconds: 3), () {
+        if (mounted) {
+          setState(() {
+            _titleTapCount = 0;
+          });
+        }
+      });
+    }
+  }
+
+  // パスワード入力ダイアログを表示
+  void _showPasswordDialog() {
+    final TextEditingController passwordController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('デバッグモード'),
+          content: TextField(
+            controller: passwordController,
+            obscureText: true,
+            decoration: const InputDecoration(
+              hintText: 'パスワードを入力',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('キャンセル'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (passwordController.text == _debugPassword) {
+                  // デバッグモードを有効化
+                  Provider.of<AppState>(context, listen: false)
+                      .toggleDebugMode(true);
+                  Navigator.of(context).pop();
+
+                  // 成功メッセージを表示
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('デバッグモードが有効になりました'),
+                      backgroundColor: Colors.green,
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                } else {
+                  // エラーメッセージを表示
+                  Navigator.of(context).pop();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('パスワードが正しくありません'),
+                      backgroundColor: AppTheme.primaryRed,
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryBlue,
+              ),
+              child: const Text('確認'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Future<void> _resetSearchCount() async {
     await _reviewService.resetSearchCount();
     await _loadSearchCount();
@@ -90,13 +180,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDebugMode = Provider.of<AppState>(context).isDebugMode;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          '設定',
-          style: TextStyle(
-            color: AppTheme.textPrimary,
-            fontWeight: FontWeight.bold,
+        title: GestureDetector(
+          onTap: _handleTitleTap,
+          child: const Text(
+            '設定',
+            style: TextStyle(
+              color: AppTheme.textPrimary,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
         backgroundColor: Colors.white,
@@ -173,6 +268,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     leading: const Icon(Icons.star, color: Colors.amber),
                     title: const Text('レビューダイアログをテスト表示'),
                     onTap: _showAppReview,
+                  ),
+                ],
+
+                // デバッグモードが有効の場合のみデバッグセクションを表示
+                if (isDebugMode) ...[
+                  _buildSectionHeader('デバッグ'),
+
+                  // デバッグモード無効化
+                  ListTile(
+                    leading: const Icon(Icons.bug_report, color: Colors.red),
+                    title: const Text('デバッグモードを無効化'),
+                    onTap: () {
+                      Provider.of<AppState>(context, listen: false)
+                          .toggleDebugMode(false);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('デバッグモードを無効化しました'),
+                          backgroundColor: Colors.green,
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    },
                   ),
                 ],
               ],

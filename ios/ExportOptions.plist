@@ -10,7 +10,7 @@
     <string>automatic</string>
     <key>provisioningProfiles</key>
     <dict>
-        <key>com.example.karaokeMap</key>
+        <key>com.hayate.dev.karaoke_map</key>
         <string>YOUR_PROVISIONING_PROFILE_NAME</string>
     </dict>
 </dict>
