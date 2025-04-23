@@ -6,9 +6,13 @@ import 'services/database_helper.dart';
 import 'services/location_permission_service.dart';
 import 'screens/location_permission_screen.dart';
 import 'theme/app_theme.dart';
+import 'config/env_config.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // 環境変数の読み込み
+  await EnvConfig.init();
 
   // データベースの初期化
   await DatabaseHelper.instance.database;

@@ -6,49 +6,29 @@ import 'dart:math';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:logger/logger.dart';
 import 'dart:async';
+import '../config/env_config.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class PlacesService {
-  static const String _apiKey = 'AIzaSyAECg6Ww6B3v3YtibYZkUXE_5tditY5eqI';
+  static String get _apiKey => EnvConfig.googleMapsApiKey;
   static const String _baseUrl = 'https://maps.googleapis.com/maps/api/place';
   final Logger _logger = Logger();
 
-  // リトライ回数とタイムアウト時間の設定
-  static const int _maxRetries = 3;
   static const Duration _timeout = Duration(seconds: 10);
-  static const Duration _retryDelay = Duration(seconds: 2);
 
-  // リトライ機能付きHTTPリクエスト
-  Future<http.Response> _retryableGet(Uri url) async {
-    int attempts = 0;
-    late http.Response response;
+  // キャッシュのキー
+  static const String _placeDetailsCache = 'place_details_cache';
+  static const String _nearbyStationsCache = 'nearby_stations_cache';
+  static const Duration _cacheDuration = Duration(hours: 24); // キャッシュの有効期限
 
-    while (attempts < _maxRetries) {
-      attempts++;
-      try {
-        response = await http.get(url).timeout(_timeout);
-
-        if (response.statusCode == 200) {
-          return response;
-        } else if (response.statusCode >= 500) {
-          // サーバーエラーの場合はリトライ
-          _logger.w(
-              'サーバーエラー (${response.statusCode}), リトライ $attempts/$_maxRetries');
-        } else {
-          // 400番台など他のエラーはリトライせず即座に返す
-          return response;
-        }
-      } catch (e) {
-        _logger.w('リクエストエラー: $e, リトライ $attempts/$_maxRetries');
-        if (attempts == _maxRetries) {
-          rethrow; // 最大リトライ回数に達したら例外を再スロー
-        }
-      }
-
-      // 次のリトライまで少し待機
-      await Future.delayed(_retryDelay);
+  // 通常のHTTPリクエスト
+  Future<http.Response> _httpGet(Uri url) async {
+    try {
+      return await http.get(url).timeout(_timeout);
+    } catch (e) {
+      _logger.e('リクエストエラー: $e');
+      rethrow;
     }
-
-    return response; // これは実行されないはずだが、コンパイルのために必要
   }
 
   Future<List<PlaceSuggestion>> getAutocompleteSuggestions(
@@ -60,9 +40,8 @@ class PlacesService {
     );
 
     try {
-      final response = await _retryableGet(url);
+      final response = await _httpGet(url);
       _logger.d('Response status: ${response.statusCode}');
-      _logger.d('Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final json = jsonDecode(response.body);
@@ -78,6 +57,85 @@ class PlacesService {
       _logger.e('Error fetching suggestions: $e');
     }
     return [];
+  }
+
+  // 詳細情報のキャッシュを取得
+  Future<Map<String, dynamic>?> _getCachedPlaceDetails(String placeId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cacheString = prefs.getString('$_placeDetailsCache:$placeId');
+
+      if (cacheString != null) {
+        final cacheData = jsonDecode(cacheString);
+        final timestamp = DateTime.parse(cacheData['timestamp']);
+
+        // キャッシュが有効期限内か確認
+        if (DateTime.now().difference(timestamp) < _cacheDuration) {
+          _logger.d('キャッシュから詳細情報を取得: $placeId');
+          return cacheData['details'];
+        }
+      }
+    } catch (e) {
+      _logger.e('キャッシュ取得エラー: $e');
+    }
+    return null;
+  }
+
+  // 詳細情報をキャッシュに保存
+  Future<void> _cachePlaceDetails(
+      String placeId, Map<String, dynamic> details) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cacheData = {
+        'timestamp': DateTime.now().toIso8601String(),
+        'details': details,
+      };
+      await prefs.setString(
+          '$_placeDetailsCache:$placeId', jsonEncode(cacheData));
+      _logger.d('詳細情報をキャッシュに保存: $placeId');
+    } catch (e) {
+      _logger.e('キャッシュ保存エラー: $e');
+    }
+  }
+
+  // 最寄り駅情報のキャッシュを取得
+  Future<Map<String, dynamic>?> _getCachedNearestStation(
+      String locationKey) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cacheString = prefs.getString('$_nearbyStationsCache:$locationKey');
+
+      if (cacheString != null) {
+        final cacheData = jsonDecode(cacheString);
+        final timestamp = DateTime.parse(cacheData['timestamp']);
+
+        // キャッシュが有効期限内か確認
+        if (DateTime.now().difference(timestamp) < _cacheDuration) {
+          _logger.d('キャッシュから最寄り駅情報を取得: $locationKey');
+          return cacheData['station'];
+        }
+      }
+    } catch (e) {
+      _logger.e('駅情報キャッシュ取得エラー: $e');
+    }
+    return null;
+  }
+
+  // 最寄り駅情報をキャッシュに保存
+  Future<void> _cacheNearestStation(
+      String locationKey, Map<String, dynamic> station) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cacheData = {
+        'timestamp': DateTime.now().toIso8601String(),
+        'station': station,
+      };
+      await prefs.setString(
+          '$_nearbyStationsCache:$locationKey', jsonEncode(cacheData));
+      _logger.d('最寄り駅情報をキャッシュに保存: $locationKey');
+    } catch (e) {
+      _logger.e('駅情報キャッシュ保存エラー: $e');
+    }
   }
 
   Future<List<PlaceResult>> searchKaraoke(
@@ -117,7 +175,7 @@ class PlacesService {
     }
 
     try {
-      final searchResponse = await _retryableGet(searchUrl);
+      final searchResponse = await _httpGet(searchUrl);
       if (searchResponse.statusCode != 200) {
         _logger.e(
             'API Error: ${searchResponse.statusCode} - ${searchResponse.body}');
@@ -140,7 +198,7 @@ class PlacesService {
         );
 
         _logger.d('Using fallback Text Search: $fallbackUrl');
-        final fallbackResponse = await _retryableGet(fallbackUrl);
+        final fallbackResponse = await _httpGet(fallbackUrl);
 
         if (fallbackResponse.statusCode == 200) {
           final fallbackJson = jsonDecode(fallbackResponse.body);
@@ -180,20 +238,37 @@ class PlacesService {
 
       _logger.d('Results after chain filtering: ${filteredResults.length}');
 
-      // フィルタリングされた結果に対して詳細情報を取得
-      final futures = filteredResults.map((place) async {
+      // リクエスト数削減のため、バッチでPlace Detailsを処理する
+      final results = <PlaceResult>[];
+      for (var place in filteredResults) {
         try {
-          // 詳細情報を取得
-          final detailsUrl = Uri.parse(
-            '$_baseUrl/details/json?place_id=${place['place_id']}&language=ja&fields=formatted_phone_number,website,opening_hours,photos&key=$_apiKey',
-          );
+          // キャッシュから詳細情報をチェック
+          final placeId = place['place_id'];
+          Map<String, dynamic>? detailsData =
+              await _getCachedPlaceDetails(placeId);
 
-          final detailsResponse = await _retryableGet(detailsUrl);
-          if (detailsResponse.statusCode == 200) {
-            final detailsJson = jsonDecode(detailsResponse.body);
-            if (detailsJson['status'] == 'OK') {
-              place.addAll(detailsJson['result']);
+          // キャッシュになければAPI呼び出し
+          if (detailsData == null) {
+            final detailsUrl = Uri.parse(
+              '$_baseUrl/details/json?place_id=$placeId&language=ja&fields=formatted_phone_number,website,opening_hours,photos&key=$_apiKey',
+            );
+
+            final detailsResponse = await _httpGet(detailsUrl);
+            if (detailsResponse.statusCode == 200) {
+              final detailsJson = jsonDecode(detailsResponse.body);
+              if (detailsJson['status'] == 'OK') {
+                detailsData = detailsJson['result'] as Map<String, dynamic>;
+                // キャッシュに保存
+                if (detailsData != null) {
+                  await _cachePlaceDetails(placeId, detailsData);
+                }
+              }
             }
+          }
+
+          // 詳細情報をマージ
+          if (detailsData != null) {
+            place.addAll(detailsData);
           }
 
           final placeLocation = LatLng(
@@ -230,17 +305,34 @@ class PlacesService {
             place['distance_type'] = 'current';
             _logger.d('Current location search - Distance: $distance');
           } else {
-            // エリア検索の場合
+            // エリア検索の場合は最寄り駅情報を取得
             _logger.d('Area search - Finding nearest station...');
-            final nearestStation = await _findNearestStation(placeLocation);
-            if (nearestStation != null) {
+
+            // 位置情報からキャッシュのキーを生成
+            final locationKey =
+                '${placeLocation.latitude.toStringAsFixed(5)},${placeLocation.longitude.toStringAsFixed(5)}';
+
+            // キャッシュから最寄り駅をチェック
+            final nearestStation = await _getCachedNearestStation(locationKey);
+
+            // キャッシュになければAPI呼び出し
+            final stationInfo =
+                nearestStation ?? await _findNearestStation(placeLocation);
+
+            // stationInfoがnullでない場合のみ処理
+            if (stationInfo != null) {
+              // キャッシュがなかった場合のみ保存
+              if (nearestStation == null) {
+                await _cacheNearestStation(locationKey, stationInfo);
+              }
+
               // 最寄り駅情報と距離を設定
-              place['nearest_station'] = nearestStation;
-              distance = nearestStation['distance'];
+              place['nearest_station'] = stationInfo;
+              distance = stationInfo['distance'];
               place['distance'] = distance;
               place['distance_type'] = 'nearest';
               _logger.d(
-                  'Found nearest station: ${nearestStation['name']} - Distance: ${distance}m');
+                  'Found nearest station: ${stationInfo['name']} - Distance: ${distance}m');
             }
           }
 
@@ -250,22 +342,15 @@ class PlacesService {
 
           // 指定された半径内かどうかをチェック
           if (distance != null && distance <= radius) {
-            return PlaceResult.fromJson(place);
+            results.add(PlaceResult.fromJson(place));
           }
         } catch (e) {
           _logger.e('Error processing place ${place['name']}: $e');
         }
-        return null;
-      });
+      }
 
-      // nullを除外して結果を返す
-      final results = await Future.wait(futures);
-      final finalResults = results.whereType<PlaceResult>().toList();
-
-      _logger
-          .d('Final results count (within ${radius}m): ${finalResults.length}');
-
-      return finalResults;
+      _logger.d('Final results count (within ${radius}m): ${results.length}');
+      return results;
     } catch (e) {
       _logger.e('検索中にエラーが発生しました: $e');
       // エラーハンドリングを改善してユーザーにわかりやすいメッセージを表示できるようにする
@@ -280,7 +365,7 @@ class PlacesService {
     );
 
     try {
-      final response = await _retryableGet(url);
+      final response = await _httpGet(url);
       if (response.statusCode == 200) {
         final json = jsonDecode(response.body);
         if (json['status'] == 'OK' && json['results'].isNotEmpty) {
@@ -335,7 +420,7 @@ class PlacesService {
     );
 
     try {
-      final response = await _retryableGet(url);
+      final response = await _httpGet(url);
       if (response.statusCode == 200) {
         final json = jsonDecode(response.body);
         if (json['status'] == 'OK' && json['candidates'].isNotEmpty) {
@@ -362,7 +447,7 @@ class PlacesService {
       );
 
       _logger.d('Searching nearby places at: $lat, $lng');
-      final response = await _retryableGet(url);
+      final response = await _httpGet(url);
       final data = json.decode(response.body);
 
       if (data['status'] != 'OK') {

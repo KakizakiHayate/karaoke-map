@@ -45,3 +45,7 @@ app.*.map.json
 
 # Flutter
 pubspec.lock
+
+# Environment variables
+.env
+.env.*
