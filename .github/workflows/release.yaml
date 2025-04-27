@@ -4,7 +4,7 @@ name: CD_iOS
 
 on:
   push:
-    branches: [ develop ]
+    branches: [ feature/add-ci-cd ]
 
   workflow_dispatch:
 
