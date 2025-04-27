@@ -1,0 +1,92 @@
+# This is a basic workflow to help you get started with Actions
+
+name: CD_iOS
+
+on:
+  push:
+    branches: [ develop ]
+
+  workflow_dispatch:
+
+jobs:
+  # This workflow contains a single job called "build"
+  ios_distribution:
+    runs-on: macos-11
+    if: |
+      contains(github.event.head_commit.message, '[Release]') == true && contains(github.event.head_commit.message, '[iOS]') == true
+
+    name: Distribution(iOS)
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Show Xcode list
+      run: ls /Applications | grep 'Xcode'
+
+    - name: Select Xcode version
+      run: sudo xcode-select -s '/Applications/Xcode_13.2.app/Contents/Developer'
+
+    - name: Setup flutter
+      uses: subosito/flutter-action@v1
+      with:
+        flutter-version: '2.5.3'
+
+    - name: Set up tools
+      run: |
+        flutter pub get
+
+    - name: ExportPath
+      run: |
+        export PATH=$PATH:${FLUTTER_HOME}/bin/cache/dart-sdk/bin
+        export PATH=$PATH:${FLUTTER_HOME}/.pub-cache/bin
+
+    - name: Pod cache
+      uses: actions/cache@v2
+      with:
+        path: Pods
+        key: ${{ runner.os }}-pods-${{ hashFiles('**/Podfile.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-pods-
+
+    - name: Pod Install
+      if: steps.cache-cocoapods.outputs.cache-hit != 'true'
+      run: |
+        cd ios/
+        pod install
+
+      # fastlaneで必要なため、SSHキーのセットアップをする.
+    - name: Setup SSH Keys and known_hosts for fastlane match
+      # Copied from https://github.com/maddox/actions/blob/master/ssh/entrypoint.sh
+      run: |
+        SSH_PATH="$HOME/.ssh"
+
+        mkdir -p "$SSH_PATH"
+        touch "$SSH_PATH/known_hosts"
+
+        echo "$PRIVATE_KEY" > "$SSH_PATH/id_ed25519"
+
+        chmod 700 "$SSH_PATH"
+        ssh-keyscan github.com >> ~/.ssh/known_hosts
+        chmod 600 "$SSH_PATH/known_hosts"
+        chmod 600 "$SSH_PATH/id_ed25519"
+
+        eval $(ssh-agent)
+        ssh-add "$SSH_PATH/id_ed25519"
+      env:
+        # 秘匿情報の受け渡し
+        PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+
+    - name: Run build and Deploy (fastlane)
+      run: |
+        cd ios/
+        ls
+        fastlane build_testflight
+      env:
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          TEAM_ID: ${{ secrets.TEAM_ID }}
+          FASTLANE_PASSWORD: ${{ secrets.FASTLANE_PASSWORD }}
+          MATCH_KEYCHAIN_NAME: ${{ secrets.MATCH_KEYCHAIN_NAME }}
+          MATCH_KEYCHAIN_PASSWORD: ${{ secrets.MATCH_KEYCHAIN_PASSWORD }}
+          MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
+          ASC_API_KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
+          ASC_API_ISSUER_ID: ${{ secrets.ASC_API_ISSUER_ID }}
+          ASC_API_KEY_CONNECT: ${{ secrets.ASC_API_KEY_CONNECT }}
