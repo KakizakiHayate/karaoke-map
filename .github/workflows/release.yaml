@@ -10,7 +10,7 @@ on:
 
 jobs:
   ios_distribution:
-    runs-on: macos-14
+    runs-on: macos-15
 
     name: Distribution(iOS)
     steps:
@@ -19,7 +19,7 @@ jobs:
     - name: Setup Xcode
       uses: maxim-lobanov/setup-xcode@v1
       with:
-        xcode-version: '15.3'  # 必要なバージョンを明示指定
+        xcode-version: '16.0'
 
     - name: Show Xcode list
       run: ls /Applications | grep 'Xcode'
