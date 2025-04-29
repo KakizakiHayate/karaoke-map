@@ -89,3 +89,5 @@ jobs:
           ASC_API_KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
           ASC_API_ISSUER_ID: ${{ secrets.ASC_API_ISSUER_ID }}
           ASC_API_KEY_CONNECT: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
+          CER_REPO: ${{ secrets.CER_REPO }}
+          CER_REPO_BRANCH: ${{ secrets.CER_REPO_BRANCH }}

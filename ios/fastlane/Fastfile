@@ -41,7 +41,13 @@ private_lane :prepareBuild do
     in_house: false
   )
   # アクションの呼び出し
-  match(api_key: api_key, type: "appstore", readonly: true, git_basic_authorization: ENV['MATCH_GIT_BASIC_AUTHORIZATION'])
+  match(
+    api_key: api_key, type: "appstore",
+    readonly: true,
+    git_url: ENV['CER_REPO'],
+    git_branch: ENV['CER_REPO_BRANCH'],
+    git_basic_authorization: ENV['MATCH_GIT_BASIC_AUTHORIZATION']
+  )
   # Manualに変更https://docs.fastlane.tools/actions/update_code_signing_settings/
   update_code_signing_settings(
     path: "Runner.xcodeproj",
