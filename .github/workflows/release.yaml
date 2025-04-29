@@ -74,6 +74,9 @@ jobs:
         # 秘匿情報の受け渡し
         PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
 
+    - name: Restore .env file
+      run: echo "${{ secrets.ENV_FILE }}" > .env
+
     - name: Run build and Deploy (fastlane)
       run: |
         cd ios/
@@ -91,3 +94,7 @@ jobs:
           ASC_API_KEY_CONNECT: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
           CER_REPO: ${{ secrets.CER_REPO }}
           CER_REPO_BRANCH: ${{ secrets.CER_REPO_BRANCH }}
+          ENV_FILE: ${{ secrets.ENV_FILE }}
+
+    - name: Clean up .env
+      run: rm .env
