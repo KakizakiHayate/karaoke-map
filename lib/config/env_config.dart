@@ -7,5 +7,5 @@ class EnvConfig {
 
   static String get googleMapsApiKey {
     return dotenv.env['GOOGLE_MAPS_API_KEY'] ?? '';
-  }
+  } 
 }
