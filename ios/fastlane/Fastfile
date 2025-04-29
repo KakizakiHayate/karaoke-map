@@ -54,7 +54,7 @@ private_lane :prepareBuild do
     use_automatic_signing: false,
     team_id: ENV['TEAM_ID'],
     code_sign_identity: "Apple Distribution",
-    profile_name: "match AppStore *",
+    profile_name: "match AppStore com.hayate.dev.karaokeMap",
     bundle_identifier: "com.hayate.dev.karaokeMap"
   )
 end
