@@ -36,9 +36,10 @@ platform :android do
   desc "内部テスト用のビルドとGoogle Playへのアップロード"
   lane :internal do
     current_branch = `git rev-parse --abbrev-ref HEAD`.strip
-    if current_branch != "main" && current_branch != "develop"
+    if !["main", "develop", "feature/add-ci-cd"].include?(current_branch)
       UI.user_error!("このレーンはmainかdevelopブランチからのみ実行できます")
     end
+    
 
     previous_build_number = google_play_track_version_codes(track: "internal")[0]
     new_version_code = previous_build_number + 1
