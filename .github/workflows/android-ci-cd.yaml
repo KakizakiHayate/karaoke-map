@@ -67,4 +67,4 @@ jobs:
           bundle exec fastlane internal
         env:
           PLAY_CONFIG_JSON: ${{ secrets.PLAY_CONFIG_JSON }}
-          ANDROID_JSON_KEY_PATH: android/play-store-credentials.json
+          ANDROID_JSON_KEY_PATH: play-store-credentials.json
