@@ -24,6 +24,9 @@ jobs:
       
       - name: Flutterパッケージの取得
         run: flutter pub get
+
+      - name: Restore .env file
+        run: echo "${{ secrets.ENV_FILE }}" > .env
       
       - name: シークレット値のマスク
         run: |
@@ -68,3 +71,7 @@ jobs:
         env:
           PLAY_CONFIG_JSON: ${{ secrets.PLAY_CONFIG_JSON }}
           ANDROID_JSON_KEY_PATH: play-store-credentials.json
+
+      - name: Clean up .env
+        run: rm .env
+        
