@@ -1,0 +1,77 @@
+name: Android内部テスト配信
+
+on:
+  push:
+    branches: [ feature/add-ci-cd ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Javaのセットアップ
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+      
+      - name: Flutterのセットアップ
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.x'
+          channel: 'stable'
+      
+      - name: Flutterパッケージの取得
+        run: flutter pub get
+
+      - name: Restore .env file
+        run: echo "${{ secrets.ENV_FILE }}" > .env
+      
+      - name: シークレット値のマスク
+        run: |
+          echo "::add-mask::${{ secrets.ANDROID_KEYSTORE_FILE }}"
+          echo "::add-mask::${{ secrets.KEYSTORE_STORE_PASSWORD }}"
+          echo "::add-mask::${{ secrets.KEYSTORE_KEY_PASSWORD }}"
+          echo "::add-mask::${{ secrets.KEYSTORE_KEY_ALIAS }}"
+          echo "::add-mask::${{ secrets.PLAY_CONFIG_JSON }}"
+      
+      - name: キーストアファイルの復元
+        run: |
+          cat <<EOF | base64 --decode > android/app/upload-keystore.jks
+          ${{ secrets.ANDROID_KEYSTORE_FILE }}
+          EOF
+      
+      - name: key.propertiesの作成
+        run: |
+          cat <<EOF > android/key.properties
+          storePassword=${{ secrets.KEYSTORE_STORE_PASSWORD }}
+          keyPassword=${{ secrets.KEYSTORE_KEY_PASSWORD }}
+          keyAlias=${{ secrets.KEYSTORE_KEY_ALIAS }}
+          storeFile=upload-keystore.jks
+          EOF
+      
+      - name: Play Storeの認証ファイルを設定
+        run: |
+          cat <<EOF | base64 --decode > android/play-store-credentials.json
+          ${{ secrets.PLAY_CONFIG_JSON }}
+          EOF
+      
+      - name: Rubyのセットアップ
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.1'
+          bundler-cache: true
+      
+      - name: fastlaneの実行
+        run: |
+          cd android
+          bundle install
+          bundle exec fastlane internal
+        env:
+          PLAY_CONFIG_JSON: ${{ secrets.PLAY_CONFIG_JSON }}
+          ANDROID_JSON_KEY_PATH: play-store-credentials.json
+
+      - name: Clean up .env
+        run: rm .env
+        

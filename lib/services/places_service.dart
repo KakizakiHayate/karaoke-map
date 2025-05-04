@@ -259,9 +259,7 @@ class PlacesService {
               if (detailsJson['status'] == 'OK') {
                 detailsData = detailsJson['result'] as Map<String, dynamic>;
                 // キャッシュに保存
-                if (detailsData != null) {
-                  await _cachePlaceDetails(placeId, detailsData);
-                }
+                await _cachePlaceDetails(placeId, detailsData);
               }
             }
           }

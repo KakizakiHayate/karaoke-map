@@ -1,0 +1,79 @@
+# This file contains the fastlane.tools configuration
+# You can find the documentation at https://docs.fastlane.tools
+#
+# For a list of all available actions, check out
+#
+#     https://docs.fastlane.tools/actions
+#
+# For a list of all available plugins, check out
+#
+#     https://docs.fastlane.tools/plugins/available-plugins
+#
+
+# Uncomment the line if you want fastlane to automatically update itself
+# update_fastlane
+
+default_platform(:ios)
+
+platform :ios do
+  desc "testflight配信"
+  lane :build_testflight do
+    prepareBuild
+    buildIpa
+    deployTestFlight
+  end
+end
+###############
+# private lane
+###############
+private_lane :prepareBuild do
+  # CIにはデフォのキーチェーンがないため新規作成
+  create_keychain(
+    name: ENV['MATCH_KEYCHAIN_NAME'],
+    password: ENV['MATCH_KEYCHAIN_PASSWORD'],
+    timeout: 1800
+  )
+  # apikeyの設定
+  api_key = app_store_connect_api_key(
+    key_id: ENV['ASC_API_KEY_ID'],
+    issuer_id: ENV['ASC_API_ISSUER_ID'],
+    key_content: ENV['ASC_API_KEY_CONNECT'],
+    in_house: false
+  )
+  # アクションの呼び出し
+  match(
+    api_key: api_key, type: "appstore",
+    readonly: true,
+    git_url: ENV['CER_REPO'],
+    git_branch: ENV['CER_REPO_BRANCH'],
+    git_basic_authorization: ENV['MATCH_GIT_BASIC_AUTHORIZATION']
+  )
+  # Manualに変更https://docs.fastlane.tools/actions/update_code_signing_settings/
+  update_code_signing_settings(
+    path: "Runner.xcodeproj",
+    use_automatic_signing: false,
+    team_id: ENV['TEAM_ID'],
+    code_sign_identity: "Apple Distribution",
+    profile_name: "match AppStore com.hayate.dev.karaokeMap",
+    bundle_identifier: "com.hayate.dev.karaokeMap"
+  )
+end
+
+private_lane :buildIpa do
+  # https://docs.fastlane.tools/actions/build_ios_app/
+  build_ios_app(
+    workspace: "Runner.xcworkspace",
+    scheme: "Runner",
+    configuration: "Release",
+    clean: true,
+    output_directory: "build",
+    output_name: "release-karaoke-map.ipa",
+    export_method: "app-store"
+  )
+end
+
+
+private_lane :deployTestFlight do
+  upload_to_testflight(skip_submission: true)
+end
+

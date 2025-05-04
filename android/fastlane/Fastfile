@@ -1,0 +1,60 @@
+# This file contains the fastlane.tools configuration
+# You can find the documentation at https://docs.fastlane.tools
+#
+# For a list of all available actions, check out
+#
+#     https://docs.fastlane.tools/actions
+#
+# For a list of all available plugins, check out
+#
+#     https://docs.fastlane.tools/plugins/available-plugins
+#
+
+# Uncomment the line if you want fastlane to automatically update itself
+# update_fastlane
+
+default_platform(:android)
+
+platform :android do
+  desc "Runs all the tests"
+  lane :test do
+    gradle(task: "test")
+  end
+
+  desc "Submit a new Beta Build to Crashlytics Beta"
+  lane :beta do
+    gradle(task: "clean assembleRelease")
+    crashlytics
+  end
+
+  desc "Deploy a new version to the Google Play"
+  lane :deploy do
+    gradle(task: "clean assembleRelease")
+    upload_to_play_store
+  end
+
+  desc "内部テスト用のビルドとGoogle Playへのアップロード"
+  lane :internal do
+    current_branch = `git rev-parse --abbrev-ref HEAD`.strip
+    if !["main", "develop", "feature/add-ci-cd"].include?(current_branch)
+      UI.user_error!("このレーンはmainかdevelopブランチからのみ実行できます")
+    end
+    
+
+    previous_build_number = google_play_track_version_codes(track: "internal")[0]
+    new_version_code = previous_build_number + 1
+
+    sh("cd .. && flutter clean")
+    sh("cd .. && flutter pub get")
+    sh("cd .. && flutter build appbundle --build-number=#{new_version_code}")
+
+    upload_to_play_store(
+      track: 'internal',
+      aab: "../build/app/outputs/bundle/release/app-release.aab",
+      skip_upload_apk: true,
+      skip_upload_metadata: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true
+    )
+  end
+end

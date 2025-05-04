@@ -1,0 +1,100 @@
+# This is a basic workflow to help you get started with Actions
+
+name: CD_iOS
+
+on:
+  push:
+    branches: [ main ]
+
+  workflow_dispatch:
+
+jobs:
+  ios_distribution:
+    runs-on: macos-15
+
+    name: Distribution(iOS)
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: '16.0'
+
+    - name: Show Xcode list
+      run: ls /Applications | grep 'Xcode'
+
+    - name: Setup flutter
+      uses: subosito/flutter-action@v1
+      with:
+        flutter-version: '3.29.3'
+
+    - name: Set up tools
+      run: |
+        flutter pub get
+
+    - name: ExportPath
+      run: |
+        export PATH=$PATH:${FLUTTER_HOME}/bin/cache/dart-sdk/bin
+        export PATH=$PATH:${FLUTTER_HOME}/.pub-cache/bin
+
+    - name: Pod cache
+      uses: actions/cache@v4
+      with:
+        path: Pods
+        key: ${{ runner.os }}-pods-${{ hashFiles('**/Podfile.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-pods-
+
+    - name: Pod Install
+      if: steps.cache-cocoapods.outputs.cache-hit != 'true'
+      run: |
+        cd ios/
+        pod install
+
+      # fastlaneで必要なため、SSHキーのセットアップをする.
+    - name: Setup SSH Keys and known_hosts for fastlane match
+      # Copied from https://github.com/maddox/actions/blob/master/ssh/entrypoint.sh
+      run: |
+        SSH_PATH="$HOME/.ssh"
+
+        mkdir -p "$SSH_PATH"
+        touch "$SSH_PATH/known_hosts"
+
+        echo "$PRIVATE_KEY" > "$SSH_PATH/id_ed25519"
+
+        chmod 700 "$SSH_PATH"
+        ssh-keyscan github.com >> ~/.ssh/known_hosts
+        chmod 600 "$SSH_PATH/known_hosts"
+        chmod 600 "$SSH_PATH/id_ed25519"
+
+        eval $(ssh-agent)
+        ssh-add "$SSH_PATH/id_ed25519"
+      env:
+        # 秘匿情報の受け渡し
+        PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+
+    - name: Restore .env file
+      run: echo "${{ secrets.ENV_FILE }}" > .env
+
+    - name: Run build and Deploy (fastlane)
+      run: |
+        cd ios/
+        ls
+        fastlane build_testflight
+      env:
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          TEAM_ID: ${{ secrets.TEAM_ID }}
+          FASTLANE_PASSWORD: ${{ secrets.FASTLANE_PASSWORD }}
+          MATCH_KEYCHAIN_NAME: ${{ secrets.MATCH_KEYCHAIN_NAME }}
+          MATCH_KEYCHAIN_PASSWORD: ${{ secrets.MATCH_KEYCHAIN_PASSWORD }}
+          MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
+          ASC_API_KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
+          ASC_API_ISSUER_ID: ${{ secrets.ASC_API_ISSUER_ID }}
+          ASC_API_KEY_CONNECT: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
+          CER_REPO: ${{ secrets.CER_REPO }}
+          CER_REPO_BRANCH: ${{ secrets.CER_REPO_BRANCH }}
+          ENV_FILE: ${{ secrets.ENV_FILE }}
+
+    - name: Clean up .env
+      run: rm .env
