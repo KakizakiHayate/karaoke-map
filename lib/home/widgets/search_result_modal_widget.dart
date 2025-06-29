@@ -32,8 +32,13 @@ class SearchResultModalWidget extends StatefulWidget {
 
 class SearchResultModalWidgetState extends State<SearchResultModalWidget> {
   final SavedPlaceService _savedPlaceService = SavedPlaceService();
+  final PlacesService _placesService = PlacesService();
   // 保存済みの場所のIDを管理するためのセット
   final Set<String> _savedPlaceIds = {};
+  // 詳細情報を読み込み中の場所IDを管理
+  final Set<String> _loadingDetailsIds = {};
+  // 詳細情報が読み込まれた結果を管理
+  final Map<String, PlaceResult> _detailedResults = {};
 
   @override
   void initState() {
@@ -212,10 +217,67 @@ class SearchResultModalWidgetState extends State<SearchResultModalWidget> {
       controller: widget.scrollController,
       itemCount: widget.searchResults.length,
       itemBuilder: (context, index) {
-        final result = widget.searchResults[index];
+        final originalResult = widget.searchResults[index];
+        // 詳細情報が読み込まれていればそれを使用、そうでなければ元の結果を使用
+        final result = _detailedResults[originalResult.placeId] ?? originalResult;
+        
+        // 表示時に詳細情報を読み込み開始
+        _loadPlaceDetails(originalResult);
+        
         return _buildResultCard(context, result);
       },
     );
+  }
+
+  // 詳細情報を遅延読み込みする
+  Future<void> _loadPlaceDetails(PlaceResult place) async {
+    // すでに詳細情報が読み込まれている、または読み込み中の場合はスキップ
+    if (place.hasDetailsLoaded || 
+        _loadingDetailsIds.contains(place.placeId) ||
+        _detailedResults.containsKey(place.placeId)) {
+      return;
+    }
+
+    setState(() {
+      _loadingDetailsIds.add(place.placeId);
+    });
+
+    try {
+      final detailsData = await _placesService.getPlaceDetails(place.placeId);
+      
+      if (detailsData != null) {
+        // 営業時間のパース
+        Map<String, String>? openingHours;
+        if (detailsData['opening_hours'] != null) {
+          final periods = detailsData['opening_hours']['periods'] as List?;
+          if (periods != null && periods.isNotEmpty) {
+            openingHours = {
+              'open': periods[0]['open']?['time'] ?? '',
+              'close': periods[0]['close']?['time'] ?? '',
+            };
+          }
+        }
+
+        // 詳細情報付きのPlaceResultを作成
+        final detailedPlace = place.withDetails(
+          phoneNumber: detailsData['formatted_phone_number'],
+          website: detailsData['website'],
+          openingHours: openingHours,
+          isOpenNow: detailsData['opening_hours']?['open_now'],
+          photoReference: detailsData['photos']?[0]?['photo_reference'] ?? place.photoReference,
+        );
+
+        setState(() {
+          _detailedResults[place.placeId] = detailedPlace;
+        });
+      }
+    } catch (e) {
+      // エラーログは既にPlacesServiceで出力されているのでここでは無視
+    } finally {
+      setState(() {
+        _loadingDetailsIds.remove(place.placeId);
+      });
+    }
   }
 
   Widget _buildResultCard(BuildContext context, PlaceResult result) {
@@ -296,34 +358,54 @@ class SearchResultModalWidgetState extends State<SearchResultModalWidget> {
                 // 営業時間
                 Row(
                   children: [
-                    Icon(
-                      result.isOpenNow == true
-                          ? Icons.check_circle
-                          : Icons.access_time,
-                      size: 16,
-                      color: result.isOpenNow == true
-                          ? Colors.green
-                          : AppTheme.primaryRed,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      result.isOpenNow == true ? '営業中' : '営業時間外',
-                      style: TextStyle(
+                    // 詳細情報読み込み中の場合はローディングアイコンを表示
+                    if (_loadingDetailsIds.contains(result.placeId) && !result.hasDetailsLoaded)
+                      const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    else
+                      Icon(
+                        result.isOpenNow == true
+                            ? Icons.check_circle
+                            : Icons.access_time,
+                        size: 16,
                         color: result.isOpenNow == true
                             ? Colors.green
                             : AppTheme.primaryRed,
-                        fontWeight: FontWeight.bold,
                       ),
-                    ),
                     const SizedBox(width: 8),
-                    Text(
-                      result.getOpeningHoursText(),
-                      style: TextStyle(
-                        color: result.isOpenNow == true
-                            ? AppTheme.textPrimary
-                            : AppTheme.primaryRed,
+                    if (result.hasDetailsLoaded && result.isOpenNow != null)
+                      Text(
+                        result.isOpenNow == true ? '営業中' : '営業時間外',
+                        style: TextStyle(
+                          color: result.isOpenNow == true
+                              ? Colors.green
+                              : AppTheme.primaryRed,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      )
+                    else if (_loadingDetailsIds.contains(result.placeId))
+                      const Text(
+                        '読み込み中...',
+                        style: TextStyle(color: Colors.grey),
+                      )
+                    else
+                      const Text(
+                        '営業時間情報なし',
+                        style: TextStyle(color: Colors.grey),
                       ),
-                    ),
+                    const SizedBox(width: 8),
+                    if (result.hasDetailsLoaded)
+                      Text(
+                        result.getOpeningHoursText(),
+                        style: TextStyle(
+                          color: result.isOpenNow == true
+                              ? AppTheme.textPrimary
+                              : AppTheme.primaryRed,
+                        ),
+                      ),
                   ],
                 ),
                 const SizedBox(height: 8),

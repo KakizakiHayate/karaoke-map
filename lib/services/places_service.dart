@@ -238,37 +238,10 @@ class PlacesService {
 
       _logger.d('Results after chain filtering: ${filteredResults.length}');
 
-      // リクエスト数削減のため、バッチでPlace Detailsを処理する
+      // 基本情報のみでPlaceResultを作成（詳細情報は遅延読み込み）
       final results = <PlaceResult>[];
       for (var place in filteredResults) {
         try {
-          // キャッシュから詳細情報をチェック
-          final placeId = place['place_id'];
-          Map<String, dynamic>? detailsData =
-              await _getCachedPlaceDetails(placeId);
-
-          // キャッシュになければAPI呼び出し
-          if (detailsData == null) {
-            final detailsUrl = Uri.parse(
-              '$_baseUrl/details/json?place_id=$placeId&language=ja&fields=formatted_phone_number,website,opening_hours,photos&key=$_apiKey',
-            );
-
-            final detailsResponse = await _httpGet(detailsUrl);
-            if (detailsResponse.statusCode == 200) {
-              final detailsJson = jsonDecode(detailsResponse.body);
-              if (detailsJson['status'] == 'OK') {
-                detailsData = detailsJson['result'] as Map<String, dynamic>;
-                // キャッシュに保存
-                await _cachePlaceDetails(placeId, detailsData);
-              }
-            }
-          }
-
-          // 詳細情報をマージ
-          if (detailsData != null) {
-            place.addAll(detailsData);
-          }
-
           final placeLocation = LatLng(
             place['geometry']['location']['lat'],
             place['geometry']['location']['lng'],
@@ -353,6 +326,36 @@ class PlacesService {
       _logger.e('検索中にエラーが発生しました: $e');
       // エラーハンドリングを改善してユーザーにわかりやすいメッセージを表示できるようにする
       return [];
+    }
+  }
+
+  // 個別の店舗の詳細情報を取得する（遅延読み込み用）
+  Future<Map<String, dynamic>?> getPlaceDetails(String placeId) async {
+    try {
+      // キャッシュから詳細情報をチェック
+      Map<String, dynamic>? detailsData = await _getCachedPlaceDetails(placeId);
+
+      // キャッシュになければAPI呼び出し
+      if (detailsData == null) {
+        final detailsUrl = Uri.parse(
+          '$_baseUrl/details/json?place_id=$placeId&language=ja&fields=formatted_phone_number,website,opening_hours,photos&key=$_apiKey',
+        );
+
+        final detailsResponse = await _httpGet(detailsUrl);
+        if (detailsResponse.statusCode == 200) {
+          final detailsJson = jsonDecode(detailsResponse.body);
+          if (detailsJson['status'] == 'OK') {
+            detailsData = detailsJson['result'] as Map<String, dynamic>;
+            // キャッシュに保存
+            await _cachePlaceDetails(placeId, detailsData);
+          }
+        }
+      }
+
+      return detailsData;
+    } catch (e) {
+      _logger.e('Error fetching place details for $placeId: $e');
+      return null;
     }
   }
 

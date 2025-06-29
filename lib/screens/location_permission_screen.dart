@@ -137,11 +137,8 @@ class LocationPermissionScreen extends StatelessWidget {
       permission = await Geolocator.requestPermission();
     }
 
-    // 権限が付与された場合はコールバックを呼び出す
-    if (permission == LocationPermission.always ||
-        permission == LocationPermission.whileInUse) {
-      onPermissionGranted();
-    }
+    // 許可・拒否に関わらずホーム画面に遷移
+    onPermissionGranted();
   }
 }
 

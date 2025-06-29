@@ -18,6 +18,7 @@ class PlaceResult {
   final Map<String, dynamic>? nearestStation; // 追加
   final String? distanceType; // 'current', 'station', 'nearest'
   final String? stationName; // 駅名（駅検索の場合）
+  final bool hasDetailsLoaded; // 詳細情報が読み込み済みかどうか
 
   PlaceResult({
     required this.placeId,
@@ -36,6 +37,7 @@ class PlaceResult {
     this.nearestStation,
     this.distanceType,
     this.stationName,
+    this.hasDetailsLoaded = false,
   });
 
   factory PlaceResult.fromJson(Map<String, dynamic> json) {
@@ -83,6 +85,38 @@ class PlaceResult {
       nearestStation: json['nearest_station'],
       distanceType: json['distance_type'],
       stationName: json['station_name'],
+      hasDetailsLoaded: json['formatted_phone_number'] != null || 
+                       json['website'] != null || 
+                       json['opening_hours'] != null,
+    );
+  }
+
+  // 詳細情報を追加したPlaceResultを作成
+  PlaceResult withDetails({
+    String? phoneNumber,
+    String? website,
+    Map<String, String>? openingHours,
+    bool? isOpenNow,
+    String? photoReference,
+  }) {
+    return PlaceResult(
+      placeId: placeId,
+      name: name,
+      address: address,
+      photoReference: photoReference ?? this.photoReference,
+      rating: rating,
+      userRatingsTotal: userRatingsTotal,
+      lat: lat,
+      lng: lng,
+      phoneNumber: phoneNumber ?? this.phoneNumber,
+      website: website ?? this.website,
+      openingHours: openingHours ?? this.openingHours,
+      isOpenNow: isOpenNow ?? this.isOpenNow,
+      distance: distance,
+      nearestStation: nearestStation,
+      distanceType: distanceType,
+      stationName: stationName,
+      hasDetailsLoaded: true,
     );
   }
 
